@@ -4,13 +4,15 @@ import assert from 'node:assert/strict';
 
 const url = process.env.BURROW_URL ?? 'http://127.0.0.1:5173';
 const directory = 'artifacts/playtest';
+const recordVideo = process.env.BURROW_RECORD_VIDEO === '1';
 await mkdir(directory, { recursive: true });
 const browser = await chromium.launch({
   executablePath: process.env.CHROME_PATH ?? '/usr/bin/google-chrome',
   headless: true,
   args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 });
-const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, recordVideo: { dir: directory, size: { width: 1280, height: 800 } } });
+const context = await browser.newContext({ viewport: { width: 1280, height: 800 },
+  ...(recordVideo ? { recordVideo: { dir: directory, size: { width: 1280, height: 800 } } } : {}) });
 // Software-rendered cloud Chrome is for correctness/visual QA, not target GPU certification.
 await context.addInitScript(() => localStorage.setItem('burrow.settings', JSON.stringify({ sensitivity: 1, invert: false, volume: 0, quality: 'low' })));
 const page = await context.newPage(); page.setDefaultTimeout(120000);
@@ -78,6 +80,6 @@ try {
   assert.deepEqual(errors, []);
   console.log('PASS: title, guide, first bite, deep camera, run-up breach, lunge, slam, mouse/keyboard steering, pause, persisted settings, report, replay, title.');
 } finally {
-  await writeFile(`${directory}/report.json`, JSON.stringify({ url, browser: await browser.version(), renderer: 'SwiftShader (software)', errors, steps }, null, 2));
+  await writeFile(`${directory}/report.json`, JSON.stringify({ url, browser: await browser.version(), renderer: 'SwiftShader (software)', recordVideo, errors, steps }, null, 2));
   await context.close(); await browser.close();
 }

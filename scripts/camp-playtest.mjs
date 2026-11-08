@@ -1,0 +1,30 @@
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+await mkdir('artifacts/camp', { recursive: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH ?? '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+page.setDefaultTimeout(120000);
+await page.addInitScript(() => localStorage.setItem('burrow.settings', JSON.stringify({ quality: 'low', volume: 0 })));
+const errors = []; page.on('pageerror', e => errors.push(e.message));
+const snap = () => page.evaluate(() => window.__BURROW__.snapshot());
+const until = fn => page.waitForFunction(fn, null, { polling: 50 });
+try {
+  await page.goto(process.env.BURROW_URL ?? 'http://127.0.0.1:5173'); await page.waitForFunction(() => window.__BURROW__);
+  await page.waitForTimeout(1000); await page.screenshot({ path: 'artifacts/camp/title.png' });
+  await page.getByRole('button', { name: 'ENTER THE DUNES' }).click();
+  await page.keyboard.down('s'); await page.keyboard.down('d');
+  await until(() => window.__BURROW__.snapshot().cameraYaw >= .52);
+  await page.keyboard.up('d'); await page.keyboard.up('s'); await page.keyboard.down('w');
+  await until(() => { const s = window.__BURROW__.snapshot(); return Math.hypot(s.x - 31, s.z + 24) < 50; });
+  await page.keyboard.down('Space'); await until(() => window.__BURROW__.snapshot().depth >= 7.4);
+  await page.keyboard.up('Space'); await until(() => window.__BURROW__.snapshot().state === 'air');
+  await page.keyboard.down('Space'); await until(() => window.__BURROW__.snapshot().stats.slams > 0);
+  await page.keyboard.up('Space'); await page.keyboard.up('w'); await page.keyboard.down('s');
+  await page.screenshot({ path: 'artifacts/camp/impact.png' });
+  const s = await snap(); assert(s.stats.broken >= 2, 'Slam should break a real camp');
+  assert(s.prey.some(p => p.kind === 'jeep' && p.flipped), 'Slam should flip a real jeep');
+  await page.waitForTimeout(800); await page.screenshot({ path: 'artifacts/camp/aftermath.png' });
+  const { prey, ...summary } = s; await writeFile('artifacts/camp/report.json', JSON.stringify({ ...summary, flipped: prey.filter(p => p.flipped), errors }, null, 2));
+  assert.deepEqual(errors, []); console.log('PASS: routed to camp with real input, broke props and flipped jeep.', summary);
+} finally { await browser.close(); }
