@@ -2,7 +2,7 @@
 
 ## State
 
-**Rung 1: playable, in final visual/QA polish.** Rung 2 has not started. The brief's toy gate is being treated seriously: the complete free-roam flow exists, but final integrated art/camera review and target-machine profiling remain. Do not describe this as the campaign or a finished Steam demo.
+**Rung 1: playable and visually/behaviorally verified. Rung 2 (Hunt 1) is now in development.** The brief's toy gate is being treated seriously: the complete free-roam flow exists, but final integrated art/camera review and target-machine profiling remain. Do not describe this as the campaign or a finished Steam demo.
 
 The repository began with only BRIEF.md. DESIGN.md was written and committed before code. Work stays in this repository. User has explicitly authorized Vercel deployment using the installed, logged-in CLI (`mehmetmilly`), and up to five subagents (GPT-6.1 Sol high/xhigh for critical work). No hosted Sites registration is needed.
 
@@ -51,3 +51,13 @@ Visual review has already fixed washed-out sand, horizon clutter, bright sky lea
 ## Run
 
 `npm ci`, then `npm run dev`. `npm test` and `npm run build` are required checks. README.md documents controls, scope, quality settings and asset licenses.
+
+## Latest steering / hosting
+
+User asked to continue game work rather than stall on Vercel. The first deployment was blocked by Vercel `TEAM_ACCESS_REQUIRED`: it cannot verify the existing Git commit author against the Hobby team. Build output itself passed, but the deployment is **not live**. CLI polling was stopped after detecting the terminal BLOCKED state. Do not claim a playable hosted URL.
+
+Project: burrow0, team mehmetmillys-projects, project ID prj_KU2FT0AWBYRZh7sMgxidnRqPuOwI. Blocked deployment dpl_5GtKLcUY23Q2Bbh37bYJq9hfbS4N. Source commits are already present on GitHub (verified main HEAD8555fc2 at the time of the check). User's Vercel/GitHub account link, not missing source, is the unresolved permission issue. Do not strip metadata or impersonate another author to bypass it.
+
+The final toy passes 8 mechanics tests, the full production flow and a stable real-input audit (3 breach/slam cycles, 15seconds roaming, settings, held-input pause, 4 resets and persistence). Resource counts plateaued at63 geometries and ~8.5MB JS heap. Independent art review passed; a brief camera/sand crossing seam remains optional polish.
+
+Hunt 1 contract is appended to DESIGN.md. Preserve the toy. Parent integrates main/camera/audio/effects; agents own simulation, World, Worm, UI and QA respectively. Highest completed playable scope remains rung1 until a real-input Hunt1 win and full results flow pass.

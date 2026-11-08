@@ -85,3 +85,20 @@ The deep view keeps the ceiling quiet and the signal warm: moving prey emits exp
 Playtests exposed two control exploits and one pause surprise: holding a slam through landing primed an unwanted second breach, a lunge could reverse a committed slam, and resuming a charged dive could launch automatically. All are fixed and covered by behavior tests. The slam input is consumed until release; pausing cancels stored control intent while preserving the actual airborne state.
 
 Rung 2 remains behind the toy acceptance gate. Browser correctness and art review are established in cloud Chrome; 60 fps on the specified M5 still requires direct target-machine profiling. No cloud software-renderer result is used to claim that requirement is met.
+
+## Hunt 1 integration contract
+
+Rung 1's playable/visual gate passed; M5 certification remains a hardware verification task. Hunt 1 is now being built while preserving the toy. The first hunt is a complete dawn expedition, with three growth stages, a heat response, separate health/hunger, and the lead balloon as an apex target. Free roam remains selectable.
+
+Shared simulation contract for the slice:
+
+- `sim.mode: 'toy' | 'hunt'`; `sim.startHunt()` resets into the authored Hunt 1 opening. `sim.reset()` retains the original toy behavior.
+- `sim.hunt` is always present, with `status: 'active' | 'won' | 'lost'`, `health`, `hunger`, `heat` (0–100), `growth` (0–100 within stage), `stage` (0–2), `scale`, `score`, `medal`, `apexReady`, `apexEaten`, `damageFlash`, `growthFlash`, and `kills`.
+- New prey kinds: `goat`, `militia`, `pickup`, `helicopter`, `balloon`. Prey retain stable IDs and the existing position/physics fields. All species used by either mode must be allocated during reset so rendering can keep its instance pools stable. Unused hunt-only entities are not alive in toy mode.
+- `sim.markers` is a bounded array of `{id, x, z, radius, time, duration, kind: 'shell' | 'seismic'}`. Time is remaining telegraph seconds; impact resolves when it reaches zero. Visual code reads markers only.
+- New events: `hurt`, `grow`, `shot`, `win`, `lose`; existing burst/bite/slam events remain. `power` and optional label carry intensity/copy, with events emitted at relevant world coordinates.
+- Three stages scale the actual hero and generous mouth, slow turning, change edible permissions and pull the camera back. Stored food digests before paying growth. Hunger fills from eating, health regenerates while fed, starving damages health. A slam flips armored prey before eating; mobile deep lurking lowers heat, camping at depth triggers telegraphed seismic strikes.
+- Balloon: visible from the opening, too large until the last stage. It stays catchable at an altitude reachable with a fast dive/run-up and one lunge. Eating it ends the hunt; no unrelated kill grind remains afterward.
+- Main flow: title → expedition card → Hunt 1 → win/loss report → replay/title. Free-roam title action continues to use toy reset. No inaccessible future hunts are advertised.
+
+The slice must be played to a legitimate win with real input. Every subsystem is held to the toy's presentation bar before advancing to later hunts.
