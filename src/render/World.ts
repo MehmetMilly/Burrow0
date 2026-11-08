@@ -106,15 +106,15 @@ export class World {
   props = new THREE.Group(); scenery = new THREE.Group(); sense = new THREE.Group();
   models: THREE.Group[] = []; echoes: THREE.Group[] = [];
   flags: THREE.Mesh[] = []; winds: THREE.Line[] = []; balloons: THREE.Group[] = [];
-  underground = 0;
+  underground = 0; skyMaterial: THREE.ShaderMaterial;
   trails = Array.from({ length: 12 }, () => new THREE.Vector3());
   constructor(scene: THREE.Scene, sim: Simulation) {
     scene.background = new THREE.Color(0xdca578); scene.fog = new THREE.FogExp2(0xd6a07b, .0033);
     const sky = new THREE.Mesh(new THREE.SphereGeometry(1400, 32, 20), new THREE.ShaderMaterial({
-      side: THREE.BackSide, depthWrite: false,
+      side: THREE.BackSide, depthWrite: false, uniforms: { underground: { value: 0 } },
       vertexShader: 'varying vec3 vDirection; void main(){vDirection=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-      fragmentShader: `varying vec3 vDirection; void main(){vec3 d=normalize(vDirection); float y=max(d.y,0.); vec3 c=mix(vec3(.89,.64,.46),vec3(.33,.53,.59),pow(y,.55)); vec3 sun=normalize(vec3(-.7,.24,-.65)); float s=dot(d,sun); c+=vec3(.35,.17,.04)*pow(max(s,0.),12.); c=mix(c,vec3(1.,.87,.59),smoothstep(.9991,.9996,s)); gl_FragColor=vec4(pow(max(c,vec3(0.)),vec3(2.2)),1.);\n#include <colorspace_fragment>\n}`
-    })); sky.material.fragmentShader = sky.material.fragmentShader.replace(' #include', '\n#include'); scene.add(sky);
+      fragmentShader: `uniform float underground; varying vec3 vDirection; void main(){vec3 d=normalize(vDirection); float y=max(d.y,0.); vec3 c=mix(vec3(.89,.64,.46),vec3(.33,.53,.59),pow(y,.55)); vec3 sun=normalize(vec3(-.7,.24,-.65)); float s=dot(d,sun); c+=vec3(.35,.17,.04)*pow(max(s,0.),12.); c=mix(c,vec3(1.,.87,.59),smoothstep(.9991,.9996,s)); c=mix(c,vec3(.035,.095,.11),underground); gl_FragColor=vec4(pow(max(c,vec3(0.)),vec3(2.2)),1.);\n#include <colorspace_fragment>\n}`
+    })); sky.material.fragmentShader = sky.material.fragmentShader.replace(' #include', '\n#include'); this.skyMaterial = sky.material; scene.add(sky);
     const geometry = new THREE.PlaneGeometry(1800, 1800, 300, 300); geometry.rotateX(-Math.PI / 2);
     const positions = geometry.attributes.position;
     for (let i = 0; i < positions.count; i++) positions.setY(i, ground(positions.getX(i), positions.getZ(i)));
@@ -146,11 +146,11 @@ export class World {
   private makeLandscape() {
     const rng = random(54);
     // Eroded sentinels frame the basin rather than enclosing it with a wall.
-    const rocks = new THREE.InstancedMesh(geo.ico, mat(0xb97d61), 170); rocks.castShadow = false; rocks.receiveShadow = true;
+    const rocks = new THREE.InstancedMesh(geo.ico, mat(0xb97d61), 80); rocks.castShadow = false; rocks.receiveShadow = true;
     const dummy = new THREE.Object3D();
-    for (let i = 0; i < 170; i++) {
-      const a = rng() * Math.PI * 2, r = 200 + rng() * 300, x = Math.sin(a) * r, z = Math.cos(a) * r;
-      const h = 5 + Math.pow(rng(), 2) * 65;
+    for (let i = 0; i < 80; i++) {
+      const a = rng() * Math.PI * 2, r = 260 + rng() * 450, x = Math.sin(a) * r, z = Math.cos(a) * r;
+      const h = 3 + Math.pow(rng(), 2) * (i < 18 ? 55 : 28);
       dummy.position.set(x, ground(x, z) + h * .3, z); dummy.scale.set(9 + rng() * 15, h, 8 + rng() * 12);
       dummy.rotation.set(rng() * .15, rng() * 6, rng() * .2); dummy.updateMatrix(); rocks.setMatrixAt(i, dummy.matrix);
     }
@@ -194,6 +194,7 @@ export class World {
   }
   update(sim: Simulation, dt: number) {
     this.underground = damp(this.underground, sim.deep ? 1 : 0, sim.deep ? 4 : 8, dt);
+    this.skyMaterial.uniforms.underground.value = this.underground;
     this.sandMaterial.uniforms.time.value = sim.age; this.sandMaterial.uniforms.underground.value = this.underground;
     for (let i = 0; i < 12; i++) {
       const p = sim.history[Math.min(i * 4, sim.history.length - 1)];

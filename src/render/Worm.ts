@@ -18,7 +18,7 @@ export class Worm {
       const g = new THREE.Group();
       const taper = i < 3 ? 1 - i * .015 : Math.pow(1 - (i - 3) / 21, .65);
       const radius = (i === 0 ? 1.05 : .94) * taper;
-      g.scale.setScalar(radius);
+      g.scale.set(radius, radius, Math.max(.52, radius));
       mesh(g, shell, i % 3 === 0 ? colors.ink : colors.blue, [0, 0, 0], [1, .93, .72]);
       const c = mesh(g, collar, colors.ink, [0, .04, .25], [1, 1, 1]); c.rotation.z = -Math.PI * .25;
       mesh(g, geo.sphere, 0xbc9570, [0, -.5, .04], [.78, .4, .58]);
@@ -27,8 +27,8 @@ export class Worm {
         for (const sign of [-1, 1]) mesh(g, geo.cone, colors.ink, [sign * .82, .45, -.1], [.16, .45, .2], [0, 0, -sign * .7]);
       }
       this.group.add(g); this.segments.push(g);
-      const ghost = new THREE.Mesh(geo.sphere, new THREE.MeshBasicMaterial({ color: colors.ink, transparent: true, opacity: .22, depthWrite: false }));
-      ghost.scale.set(radius * .83, .08, radius * .8); this.group.add(ghost); this.ghosts.push(ghost);
+      const ghost = new THREE.Mesh(geo.sphere, new THREE.MeshBasicMaterial({ color: colors.ink, transparent: true, opacity: .28, depthWrite: false, depthTest: false }));
+      ghost.renderOrder = 2; ghost.scale.set(radius * .93, .06, .62); this.group.add(ghost); this.ghosts.push(ghost);
     }
     const head = this.segments[0];
     const voidMaw = new THREE.Mesh(new THREE.CircleGeometry(.79, 28), mat(0x2e2026)); voidMaw.position.z = .72; head.add(voidMaw);
@@ -69,8 +69,9 @@ export class Worm {
       if (tangent.lengthSq() > .01) g.quaternion.setFromUnitVectors(forward, tangent);
       const ghost = this.ghosts[i]; ghost.position.set(point.x, ground(point.x, point.z) + .06, point.z);
       const surface = ground(point.x, point.z), depth = surface - point.y;
+      ghost.rotation.y = sim.yaw;
       ghost.visible = !sim.deep && depth > .15 && depth < 4;
-      (ghost.material as THREE.MeshBasicMaterial).opacity = .22 * Math.max(0, 1 - depth / 4);
+      (ghost.material as THREE.MeshBasicMaterial).opacity = .33 * Math.max(0, 1 - depth / 4);
       g.visible = depth < .9 || sim.deep;
     }
   }

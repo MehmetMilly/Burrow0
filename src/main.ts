@@ -37,7 +37,7 @@ function demo() {
   sim.reset(); sim.x = 0; sim.z = -10; sim.state = 'air'; sim.y = ground(0, -10) + 14; sim.vy = 10;
   sim.speed = 16; sim.yaw = -.6;
   sim.history = Array.from({ length: 220 }, (_, i) => ({ x: sim.x + i * .08, y: sim.y - Math.pow(i * .08, 2) * .11, z: sim.z + i * .14 }));
-  render.reset(sim); demoTime = 0;
+  render.reset(sim, true); demoTime = 0;
 }
 function start() {
   clearInput(); sim.reset(); render.reset(sim); ui.reset(); ui.show('play');
@@ -103,7 +103,7 @@ function inputs(): Input {
 }
 function frame(now: number) {
   requestAnimationFrame(frame);
-  const elapsed = Math.min((now - last) / 1000, .06); last = now;
+  const rawElapsed = (now - last) / 1000; const elapsed = Math.min(rawElapsed, .1); last = now;
   if (pausedByVisibility) return;
   const playing = ui.screen === 'play'; const isDemo = ui.screen === 'title' || (['guide', 'settings'].includes(ui.screen) && guideOrigin === 'title');
   if (playing || isDemo) {
@@ -113,7 +113,10 @@ function frame(now: number) {
       if (isDemo) {
         demoTime += 1 / 120; const cycle = demoTime % 10;
         sim.step(1 / 120, { surge: true, lurk: false, dive: cycle > 3 && cycle < 5, lunge: false, turn: 0, yaw: Math.sin(demoTime * .09) * 2 - .6 });
-      } else sim.step(1 / 120, input);
+      } else {
+        if (input.turn) { render.yaw += input.turn * 1.4 / 120; input.yaw = render.yaw; }
+        sim.step(1 / 120, input);
+      }
       for (const e of sim.events.splice(0)) {
         render.event(e);
         if (playing) { sound.event(e, sim.chain); ui.event(e, sim); }
@@ -123,7 +126,7 @@ function frame(now: number) {
   } else accumulator = 0;
   render.update(sim, playing || isDemo ? elapsed : 0, isDemo || ui.screen === 'report');
   sound.update(sim, elapsed); ui.update(sim, elapsed, render.deep);
-  if (playing && wasPlay && elapsed > 0) { timings.push(elapsed * 1000); if (timings.length > 1800) timings.shift(); }
+  if (playing && wasPlay && elapsed > 0) { timings.push(rawElapsed * 1000); if (timings.length > 1800) timings.shift(); }
   wasPlay = playing;
 }
 // Inspection is available only on Vite's development server, never in deployed play.

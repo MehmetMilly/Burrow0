@@ -37,10 +37,15 @@ export class GameRenderer {
     else if (e.type === 'land' || e.type === 'breach') this.shake = .24;
     else if (e.type === 'eat') this.shake = .09;
   }
-  reset(sim: Simulation) {
+  reset(sim: Simulation, menu = false) {
     this.effects.clear(); this.yaw = sim.yaw; this.pitch = .2; this.deep = 0;
     this.cameraPosition.set(sim.x + 3, ground(sim.x, sim.z) + 10, sim.z + 21);
     this.cameraTarget.set(sim.x, sim.y + 2, sim.z - 8); this.shake = 0;
+    if (menu) {
+      const fx = Math.sin(sim.yaw), fz = -Math.cos(sim.yaw), rx = Math.cos(sim.yaw), rz = Math.sin(sim.yaw);
+      this.cameraPosition.set(sim.x - fx * 5 - rx * 25, ground(sim.x, sim.z) + 9 + Math.max(0, sim.y - ground(sim.x, sim.z)) * .65, sim.z - fz * 5 - rz * 25);
+      this.cameraTarget.set(sim.x - fx * 13, sim.y - 2, sim.z - fz * 13);
+    }
   }
   update(sim: Simulation, dt: number, menu: boolean) {
     this.world.update(sim, dt); this.worm.update(sim, dt); this.effects.update(dt);
@@ -51,8 +56,8 @@ export class GameRenderer {
       this.menuAge += dt;
       const fx = Math.sin(sim.yaw), fz = -Math.cos(sim.yaw);
       const rx = Math.cos(sim.yaw), rz = Math.sin(sim.yaw);
-      this.desired.set(sim.x - fx * 5 + rx * 22, floor + 8 + altitude * .65, sim.z - fz * 5 + rz * 22);
-      this.look.set(sim.x - rx * 8, sim.y - 1.5, sim.z - rz * 8);
+      this.desired.set(sim.x - fx * 5 - rx * 25, floor + 9 + altitude * .65, sim.z - fz * 5 - rz * 25);
+      this.look.set(sim.x - fx * 13, sim.y - 2, sim.z - fz * 13);
       this.camera.fov = damp(this.camera.fov, 48, 3, dt);
     } else {
       const distance = 21 + sim.speed * .12 + altitude * .18;
@@ -79,7 +84,7 @@ export class GameRenderer {
     if (sim.state === 'air' && this.quality !== 'low' && Math.random() < dt * 35) {
       const tail = this.worm.segments[6].position; this.effects.burst(tail.x, tail.y, tail.z, 1, 1);
     }
-    this.scene.children.forEach(o => { if (o.userData.groundShadow) o.visible = this.deep < .5; });
+    this.scene.children.forEach(o => { if (o.userData.groundShadow) o.visible = this.deep < .5 && this.quality !== 'low'; });
     this.renderer.render(this.scene, this.camera);
   }
   dispose() { this.renderer.dispose(); }
