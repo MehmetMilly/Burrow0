@@ -18,3 +18,13 @@ Build a polished free-roam dune toy before adding campaign systems. Work in this
 ## Verification / limits
 
 No implementation checks yet. Do not claim campaign completion or target-M5 performance without evidence.
+
+## First implementation milestone
+
+- Strict TypeScript / Vite / Three.js scaffold; original procedural models, locally bundled Barlow fonts with OFL license.
+- Fixed-step movement, depth-and-speed launch, air lunge, slam, swept eating, fleeing prey, flip-and-eat jeeps, breakable camp props, bounded pooled particles.
+- Sand/sky shaders, layered landscape, segmented plated worm with flower mouth, wake, deep-view echoes, follow camera.
+- Title, in-play teaching/HUD, field guide, persistent settings, pause and outing report; original layered Web Audio.
+- Four mechanics tests pass, including ten repeatable slam cycles and the anti-camping launch rule. Initial production build passes.
+- First Chrome screenshot revealed a washed-out shader palette and too-small menu hero; tuning those before judging the toy.
+- User authorized Vercel previews; CLI is installed/logged in. Deploy once visually reviewed and playable.
