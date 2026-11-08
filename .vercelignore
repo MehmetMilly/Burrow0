@@ -1,0 +1,10 @@
+.git/
+node_modules/
+artifacts/
+.vercel/
+.env*
+scripts/
+BRIEF.md
+DESIGN.md
+NOTES.md
+QA.md

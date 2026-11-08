@@ -55,3 +55,9 @@ Graphics quality controls pixel ratio, shadows and sand shedding. High caps devi
 ## Assets and licenses
 
 Game code, procedural models, shaders, icon and procedural Web Audio layers are original to this project. Recorded wind, crunch and stone foley are CC0 derivatives; see [audio credits](public/audio/CREDITS.md) for recordists, sources and edits. Barlow and Barlow Condensed by Jeremy Tribby are bundled under the SIL Open Font License in `public/fonts/OFL.txt`. Three.js is MIT licensed; other dependency licenses are available in their npm packages.
+
+## Hosting
+
+The Vercel project is `burrow0` under `mehmetmillys-projects`. `vercel.json` declares the Vite build and `dist` output; `.vercelignore` keeps captures, local environment files and tooling out of the upload. The local CLI link is ignored. In a fresh checkout, use `vercel link --project burrow0` before deploying.
+
+To check the performance requirement on an M5, run a high-quality production build in Chrome at the intended play resolution and record a sustained route with several breaches and a camp slam in the Performance panel. Record resolution, graphics quality and frame-time distribution. Cloud software rendering is insufficient for this check.
