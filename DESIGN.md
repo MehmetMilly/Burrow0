@@ -73,3 +73,15 @@ Vite + strict TypeScript + Three.js. Separate simulation, world rendering, hero,
 Keep browser automation out of shipped play. An explicit development-only inspection hook can expose simulation telemetry for meaningful mechanics tests. Verify the production build as well as development. Record screenshots/video under ignored `artifacts/`, with reproducible scripts committed. Record measured hardware/browser conditions rather than claiming the cloud machine proves M5 performance.
 
 Every substantive milestone is committed with a clear message. NOTES.md records what actually exists, checks, known weaknesses and the next concrete action. README.md describes install/run, controls, scope and licenses.
+
+## Rung 1 implementation decisions
+
+The first playable scope is the free-roam Dune Sea outing, with no hunger or mission clock. It includes the complete title, field guide, settings, pause, outing report and replay flow. Camp props and flip-to-eat jeeps make slams useful without introducing unfinished combat systems. The first prey route gives a meal within seconds.
+
+The hero now uses a continuous tapered skin, sliding beveled chitin plates, swept dorsal fins, a six-petal jaw and two rings of curved teeth. A stable yaw/pitch frame keeps its armor facing up during dives. Repeated hero details, prey, camp geometry, sand particles, wind strokes and tremor echoes are batched. The central dune grid is denser while the full terrain uses fewer triangles.
+
+The deep view keeps the ceiling quiet and the signal warm: moving prey emits expanding amber echoes, with louder objects colored toward orange. The contrast back into sunlit dunes is part of the movement payoff. Recorded CC0 wind, crunch and stone layers supplement original pressure tones and granular sand, with license provenance bundled.
+
+Playtests exposed two control exploits and one pause surprise: holding a slam through landing primed an unwanted second breach, a lunge could reverse a committed slam, and resuming a charged dive could launch automatically. All are fixed and covered by behavior tests. The slam input is consumed until release; pausing cancels stored control intent while preserving the actual airborne state.
+
+Rung 2 remains behind the toy acceptance gate. Browser correctness and art review are established in cloud Chrome; 60 fps on the specified M5 still requires direct target-machine profiling. No cloud software-renderer result is used to claim that requirement is met.

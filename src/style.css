@@ -7,3 +7,97 @@
 @media(max-width:1050px){.footer-middle{display:none}.title-copy{left:7%}.specimen{right:5%;bottom:22%}.edition{font-size:8px}.report-main{left:7%;width:65%}.stamp{right:6%;width:150px;height:150px;top:40%}.stamp strong{font-size:34px}.stamp>span{font-size:6px}.stamp span:last-child{font-size:5px}.report-details{gap:15px}.bottom-controls{display:none}.lesson{max-width:63%}.lesson p{font-size:9px}.lesson strong{font-size:14px}.momentum{width:175px}.report-actions{gap:15px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 .hud{text-shadow:0 1px 9px #21343aad}.hud::before{content:'';position:absolute;inset:0;background:linear-gradient(0deg,#152c3266 0%,transparent 23%),linear-gradient(90deg,#152c3226,transparent 22%);pointer-events:none}.momentum,.bottom-controls,.depth-readout{filter:drop-shadow(0 1px 3px #182d36aa)}
+/* Keep the instrument marks legible against sunlit sand. */
+.hud{font-variant-numeric:tabular-nums}
+.hud::before{background:linear-gradient(0deg,#10262d9e 0%,#10262d22 18%,transparent 28%),linear-gradient(180deg,#10262d38,transparent 19%),linear-gradient(90deg,#152c3226,transparent 22%)}
+.hunt-label .eyebrow,.hunt-label small{font-size:9px;opacity:.85}
+.hud-top-right{font-size:12px}
+.pause-note{font-size:9px;opacity:.85}
+.depth-readout>span{font-size:9px;opacity:.9}
+.depth-readout>strong{font-variant-numeric:tabular-nums}
+.depth-track{width:3px;background:#142c327d;border:1px solid #f3dfbf35}
+.depth-track>i{width:3px;margin-left:-1px}
+.appetite .eyebrow{font-size:9px;opacity:.9}
+.appetite strong{transform-origin:left center;font-variant-numeric:tabular-nums}
+.chain{position:relative;padding-bottom:8px;transform-origin:left center}
+.chain span{font-size:8px;letter-spacing:1.4px}
+.chain-life{display:block;position:absolute;height:2px;left:16px;right:0;bottom:0;background:var(--orange);transform:scaleX(var(--chain-life,1));transform-origin:left}
+.momentum>div:first-child{font-size:9px;letter-spacing:1.5px}
+.momentum>small{font-size:8px;letter-spacing:.7px;opacity:.85}
+.speed-track{height:6px;background:#142c327d;border-color:#f3dfbf66}
+.speed-track i{height:4px;transition:width .15s,background .2s,box-shadow .2s}
+.speed-track b{height:4px}
+.full-tilt .speed-track i{background:#ffc080;box-shadow:0 0 9px #ffbb6b6b}
+.hud[data-motion=air] .depth-track>i{background:var(--cream)}
+.hud[data-motion=slam] .depth-readout{color:#ffc080}
+.lesson p{font-size:11px;opacity:.95;line-height:1.6}
+.lesson kbd{background:#142c323d;border-color:#f3dfbf99}
+.toast small{font-size:8px;opacity:.9}
+.toast p{font-size:11px;opacity:.9}
+.deep-label{font-size:11px}
+.deep-label span{font-size:8px;opacity:.8}
+.bottom-controls{opacity:.78;font-size:8px;letter-spacing:.8px}
+.bottom-controls kbd{font-size:8px}
+button:active{filter:brightness(.92)}
+.primary:active{transform:translateY(1px)}
+.text-button:hover,.secondary-actions button:hover{color:#ffba7d}
+.panel{width:426px;max-width:calc(100vw - 64px);max-height:calc(100dvh - 48px);overflow-y:auto;overflow-x:hidden;padding:22px 8px;scrollbar-width:thin;scrollbar-color:#ed865388 transparent;overscroll-behavior:contain}
+.guide-panel{width:556px}
+.close-button{right:8px}
+.setting output,.report-stats strong,.report-details b{font-variant-numeric:tabular-nums}
+.report-stats div>span{font-size:9px;opacity:.9;letter-spacing:1.2px}
+.report-details{font-size:9px;gap:24px}
+.report-details b{font-size:12px}
+.report-header small{font-size:8px;opacity:.75}
+.report-foot{opacity:.7}
+@media(max-height:750px){
+  .panel{transform:translate(-50%,-50%)}
+  .panel h2{font-size:54px;margin:10px 0 16px}
+  .panel-prose{margin-bottom:18px;font-size:15px}
+  .setting{margin:20px 0}
+  .setting.toggle{padding:16px 0}
+  .guide-row{margin:14px 0}
+  .panel .primary{height:52px}
+  .panel-foot{margin-top:18px}
+}
+@media(max-width:1050px){
+  .lesson{max-width:65%}
+  .lesson p{font-size:10px}
+  .momentum{width:190px}
+  .report-details{gap:18px}
+  .report-actions .primary{min-width:225px}
+  .stamp{right:4%;width:140px;height:140px}
+}
+@media(max-height:600px){
+  .guide-panel h2{font-size:48px}
+  .guide-row{margin:12px 0}
+  .guide-row p{font-size:11px;line-height:1.6}
+  .hunt-label{top:5%;gap:9px}
+  .hunt-label strong{font-size:21px}
+  .hunt-label small{margin-top:3px}
+  .tiny-sun{font-size:33px}
+  .appetite{bottom:21%;gap:10px}
+  .appetite-icon .worm-mark{width:36px;height:36px}
+  .appetite strong{font-size:38px}
+  .chain strong{font-size:30px}
+  .lesson{bottom:5%;align-items:flex-start;max-width:65%}
+  .lesson strong{font-size:14px}
+  .lesson p{font-size:10px;max-width:440px;margin-top:4px}
+  .momentum{bottom:5%;width:190px}
+  .bottom-controls{display:none}
+  .toast{top:24%}
+  .toast p{display:none}
+  .report-header{top:5%}
+  .report-header .worm-mark{height:30px;width:30px}
+  .report-main{top:17%;width:66%}
+  .report-main>.eyebrow{font-size:8px;margin-bottom:6px}
+  .report-screen h2{font-size:48px;margin:8px 0 16px}
+  .report-stats{gap:30px;margin-bottom:15px}
+  .report-stats strong{font-size:39px}
+  .report-stats div>span{font-size:8px;margin-top:4px}
+  .report-details{padding:11px 0}
+  .report-details b{margin-top:4px;font-size:11px}
+  .report-actions{margin-top:15px}
+  .report-actions .primary{height:49px}
+  .report-foot{bottom:2%;font-size:7px}
+}

@@ -21,7 +21,9 @@ export class UI {
   onAction: (action: string) => void = () => {};
   onSettings: (s: Settings) => void = () => {};
   root: HTMLElement;
-  private toastTimer = 0; private calloutTimer = 0; private currentLesson = -1;
+  private toastTimer = 0; private calloutTimer = 0; private currentLesson = -1; private lastChain = -1;
+  private menuFocus = new Map<Screen, HTMLElement>();
+  private reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   private completed = new Set<string>(); private hud: HTMLElement; private title: HTMLElement;
   private depthFill: HTMLElement; private speedFill: HTMLElement; private depthValue: HTMLElement; private stateLabel: HTMLElement;
   private biteValue: HTMLElement; private chain: HTMLElement; private clock: HTMLElement; private hint: HTMLElement; private hintText: HTMLElement;
@@ -53,9 +55,9 @@ export class UI {
         <div id="deep-label" class="deep-label">TREMOR SENSE <span>LISTEN TO THE SAND</span></div>
       </div>
       <div class="modal-scrim" id="scrim" hidden></div>
-      <section class="panel pause-panel" data-panel="pause" hidden><p class="eyebrow">TAKE A BREATH</p><h2>THE DESERT<br>CAN WAIT.</h2><p class="panel-prose">Your next meal isn't going anywhere.<br>Well. It probably is.</p><button class="primary" data-action="resume">BACK BENEATH ${arrow}</button><button class="text-button" data-action="settings">SETTINGS <span>↗</span></button><button class="text-button" data-action="guide">FIELD GUIDE <span>↗</span></button><button class="text-button subdued" data-action="finish">END OUTING <span>→</span></button><p class="panel-foot"><kbd>ESC</kbd> RETURN TO THE DUNES</p></section>
-      <section class="panel settings-panel" data-panel="settings" hidden><button class="close-button" data-action="back" aria-label="Back">×</button><p class="eyebrow">MAKE YOURSELF AT HOME</p><h2>INSTINCTS.</h2><label class="setting"><span>MOUSE SENSITIVITY <output id="sensitivity-output">1.0</output></span><input id="sensitivity" type="range" min="0.2" max="2.5" step="0.1" value="${this.settings.sensitivity}"></label><label class="setting toggle"><span>INVERT VERTICAL LOOK</span><input id="invert" type="checkbox" ${this.settings.invert ? 'checked' : ''}></label><label class="setting"><span>MASTER VOLUME <output id="volume-output">65%</output></span><input id="volume" type="range" min="0" max="1" step="0.05" value="${this.settings.volume}"></label><label class="setting"><span>GRAPHICS QUALITY</span><select id="quality"><option value="high">HIGH · FULL SUN</option><option value="medium">MEDIUM · LIGHTER SAND</option><option value="low">LOW · SOFT SHADOWS OFF</option></select></label><button class="primary" data-action="back">ALL SET ${arrow}</button><p class="panel-foot">SAVED AUTOMATICALLY ON THIS DEVICE</p></section>
-      <section class="panel guide-panel" data-panel="guide" hidden><button class="close-button" data-action="back" aria-label="Back">×</button><p class="eyebrow">A FIELD GUIDE TO BEING A WORM</p><h2>TRUST YOUR GUT.</h2><div class="guide-row"><span>01</span><div><h3>DRAW YOUR LINE</h3><p>Mouse to look. You follow with a little weight.<br><kbd>W</kbd> surges. <kbd>S</kbd> lurks. <kbd>A</kbd> / <kbd>D</kbd> help you turn.</p></div></div><div class="guide-row"><span>02</span><div><h3>DOWN. THEN VERY, VERY UP.</h3><p>Hold <kbd>SPACE</kbd> or <kbd>RMB</kbd> to dive. Release to breach.<br>Build speed first. Depth alone won't send you far.</p></div></div><div class="guide-row"><span>03</span><div><h3>MAKE AN ENTRANCE</h3><p>Press <kbd>SPACE</kbd> in the air to slam. Scatter the camp.<br><kbd>LMB</kbd> lunges and gives one mid-air correction.</p></div></div><div class="guide-row"><span>04</span><div><h3>IF IT FITS, IT'S FOOD</h3><p>Eating is automatic. Rabbits, chickens, crates, pots.<br>Jeeps are too tough. Flip one with a slam first.</p></div></div><button class="primary" data-action="back">GOT AN APPETITE ${arrow}</button></section>
+      <section class="panel pause-panel" data-panel="pause" role="dialog" aria-modal="true" aria-label="Paused" hidden><p class="eyebrow">TAKE A BREATH</p><h2>THE DESERT<br>CAN WAIT.</h2><p class="panel-prose">Your next meal isn't going anywhere.<br>Well. It probably is.</p><button class="primary" data-action="resume">BACK BENEATH ${arrow}</button><button class="text-button" data-action="settings">SETTINGS <span>↗</span></button><button class="text-button" data-action="guide">FIELD GUIDE <span>↗</span></button><button class="text-button subdued" data-action="finish">END OUTING <span>→</span></button><p class="panel-foot"><kbd>ESC</kbd> RETURN TO THE DUNES</p></section>
+      <section class="panel settings-panel" data-panel="settings" role="dialog" aria-modal="true" aria-label="Settings" hidden><button class="close-button" data-action="back" aria-label="Back">×</button><p class="eyebrow">MAKE YOURSELF AT HOME</p><h2>INSTINCTS.</h2><label class="setting"><span>MOUSE SENSITIVITY <output id="sensitivity-output">1.0</output></span><input id="sensitivity" type="range" min="0.2" max="2.5" step="0.1" value="${this.settings.sensitivity}"></label><label class="setting toggle"><span>INVERT VERTICAL LOOK</span><input id="invert" type="checkbox" ${this.settings.invert ? 'checked' : ''}></label><label class="setting"><span>MASTER VOLUME <output id="volume-output">65%</output></span><input id="volume" type="range" min="0" max="1" step="0.05" value="${this.settings.volume}"></label><label class="setting"><span>GRAPHICS QUALITY</span><select id="quality"><option value="high">HIGH · FULL SUN</option><option value="medium">MEDIUM · LIGHTER SAND</option><option value="low">LOW · SOFT SHADOWS OFF</option></select></label><button class="primary" data-action="back">ALL SET ${arrow}</button><p class="panel-foot">SAVED AUTOMATICALLY ON THIS DEVICE</p></section>
+      <section class="panel guide-panel" data-panel="guide" role="dialog" aria-modal="true" aria-label="Field guide" hidden><button class="close-button" data-action="back" aria-label="Back">×</button><p class="eyebrow">A FIELD GUIDE TO BEING A WORM</p><h2>TRUST YOUR GUT.</h2><div class="guide-row"><span>01</span><div><h3>DRAW YOUR LINE</h3><p>Mouse to look. You follow with a little weight.<br><kbd>W</kbd> surges. <kbd>S</kbd> lurks. <kbd>A</kbd> / <kbd>D</kbd> help you turn.</p></div></div><div class="guide-row"><span>02</span><div><h3>DOWN. THEN VERY, VERY UP.</h3><p>Hold <kbd>SPACE</kbd> or <kbd>RMB</kbd> to dive. Release to breach.<br>Build speed first. Depth alone won't send you far.</p></div></div><div class="guide-row"><span>03</span><div><h3>MAKE AN ENTRANCE</h3><p>Press <kbd>SPACE</kbd> in the air to slam. Scatter the camp.<br><kbd>LMB</kbd> lunges and gives one mid-air correction.</p></div></div><div class="guide-row"><span>04</span><div><h3>IF IT FITS, IT'S FOOD</h3><p>Eating is automatic. Rabbits, chickens, crates, pots.<br>Jeeps are too tough. Flip one with a slam first.</p></div></div><button class="primary" data-action="back">GOT AN APPETITE ${arrow}</button></section>
       <section class="screen report-screen" data-panel="report" hidden><div class="report-header">${wormMark}<span>DUNE SEA EXPEDITION <small>FIELD REPORT / 01</small></span></div><div class="report-main"><p class="eyebrow">THE SURFACE WILL REMEMBER</p><h2>A GOOD DAY<br>TO BE A WORM.</h2><div class="report-stats"><div><strong id="report-bites">0</strong><span>MORSELS EATEN</span></div><div><strong id="report-air">0<small>M</small></strong><span>BEST BREACH</span></div><div><strong id="report-slams">0</strong><span>EARTHSHAKERS</span></div></div><div class="report-details"><span>TIME IN THE SAND <b id="report-time">0:00</b></span><span>LONGEST CHAIN <b id="report-chain">0</b></span><span>GROUND COVERED <b id="report-distance">0 M</b></span></div><div class="report-actions"><button class="primary" data-action="start">STILL HUNGRY ${arrow}</button><button class="text-button" data-action="title">BACK TO TITLE <span>→</span></button></div></div><div class="stamp"><span>DUNE SEA</span><strong id="report-rank">SAND<br>ROAMER</strong><span>LEAVE ONLY TREMORS</span></div><p class="report-foot">NO CLOCK TO BEAT. JUST A DESERT TO GET UNDER.</p></section>
       <div id="input-notice" class="input-notice" hidden><p>A LITTLE MORE ROOM TO ROAM.</p><span>Burrow needs a keyboard, a mouse, and a wider window.</span></div>
     `;
@@ -67,6 +69,13 @@ export class UI {
       if (!button) return; sound.tick(); this.onAction(button.dataset.action!);
     });
     root.querySelectorAll('button').forEach(button => button.addEventListener('mouseenter', () => sound.tick()));
+    root.addEventListener('keydown', e => {
+      if (e.key !== 'Tab' || this.screen === 'play') return;
+      const controls = [...root.querySelectorAll<HTMLElement>(`[data-panel="${this.screen}"] button, [data-panel="${this.screen}"] input, [data-panel="${this.screen}"] select`)];
+      const first = controls[0], last = controls[controls.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    });
     ['sensitivity', 'invert', 'volume', 'quality'].forEach(id => this.el(id).addEventListener('input', () => {
       this.settings = {
         sensitivity: Number((this.el('sensitivity') as HTMLInputElement).value), invert: (this.el('invert') as HTMLInputElement).checked,
@@ -81,14 +90,20 @@ export class UI {
   el(id: string) { return this.root.querySelector<HTMLElement>(`#${id}`)!; }
   private refreshSettingLabels() { this.el('sensitivity-output').textContent = this.settings.sensitivity.toFixed(1); this.el('volume-output').textContent = `${Math.round(this.settings.volume * 100)}%`; }
   show(screen: Screen) {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && this.root.querySelector(`[data-panel="${this.screen}"]`)?.contains(active)) this.menuFocus.set(this.screen, active);
     this.screen = screen;
     this.root.querySelectorAll<HTMLElement>('[data-panel]').forEach(panel => { panel.hidden = panel.dataset.panel !== screen; });
     this.hud.hidden = screen !== 'play'; this.title.hidden = screen !== 'title';
     this.el('scrim').hidden = !['pause', 'settings', 'guide'].includes(screen);
     this.root.dataset.screen = screen;
-    if (screen !== 'play') requestAnimationFrame(() => this.root.querySelector<HTMLElement>(`[data-panel="${screen}"] button`)?.focus({ preventScroll: true }));
+    if (screen !== 'play') requestAnimationFrame(() => {
+      if (this.screen !== screen) return;
+      const focus = this.menuFocus.get(screen) ?? this.root.querySelector<HTMLElement>(`[data-panel="${screen}"] button`);
+      focus?.focus({ preventScroll: true });
+    });
   }
-  reset() { this.completed.clear(); this.currentLesson = -1; this.calloutTimer = 0; this.toastTimer = 0; this.callout.classList.remove('visible'); this.toast.classList.remove('visible'); }
+  reset() { this.completed.clear(); this.lastChain = -1; this.currentLesson = -1; this.calloutTimer = 0; this.toastTimer = 0; this.callout.classList.remove('visible'); this.toast.classList.remove('visible'); }
   update(sim: Simulation, dt: number, deep: number) {
     this.root.style.setProperty('--deep', deep.toFixed(3));
     if (this.screen !== 'play') return;
@@ -98,7 +113,14 @@ export class UI {
     this.speedFill.style.width = `${clamp((sim.speed - 3) / 27) * 100}%`;
     this.el('speed-label').textContent = sim.speed > 25 ? 'FULL TILT' : sim.speed < 9 ? 'LURKING' : 'CRUISING';
     this.biteValue.textContent = String(sim.stats.bites).padStart(2, '0'); this.clock.textContent = time(sim.stats.time);
-    this.chain.innerHTML = sim.chain > 1 ? `<strong>×${sim.chain}</strong><span>KEEP EATING</span>` : '';
+    if (sim.chain !== this.lastChain) {
+      this.lastChain = sim.chain;
+      this.chain.innerHTML = sim.chain > 1 ? `<strong>×${sim.chain}</strong><span>KEEP EATING</span><i class="chain-life" aria-hidden="true"></i>` : '';
+      if (sim.chain > 1 && !this.reducedMotion.matches) this.chain.animate([{ transform: 'translateY(4px) scale(1.08)' }, { transform: 'none' }], { duration: 220, easing: 'ease-out' });
+    }
+    this.chain.style.setProperty('--chain-life', String(clamp(sim.chainTime / 4.5)));
+    this.hud.dataset.motion = sim.state === 'air' ? sim.slam ? 'slam' : 'air' : sim.deep ? 'deep' : 'sand';
+    this.hud.classList.toggle('full-tilt', sim.speed > 25);
     this.el('deep-label').classList.toggle('visible', sim.deep);
     this.calloutTimer -= dt; if (this.calloutTimer <= 0) this.callout.classList.remove('visible');
     this.toastTimer -= dt; if (this.toastTimer <= 0) this.toast.classList.remove('visible');
@@ -119,7 +141,7 @@ export class UI {
     if (this.screen !== 'play') return;
     if (e.type === 'eat') {
       this.callout.textContent = e.label ?? 'GULP'; this.callout.classList.remove('visible'); void this.callout.offsetWidth; this.callout.classList.add('visible'); this.calloutTimer = 1.6;
-      this.biteValue.animate([{ transform: 'scale(1.28)', color: '#ffb26d' }, { transform: 'scale(1)', color: '#f3dfbf' }], { duration: 350 });
+      if (!this.reducedMotion.matches) this.biteValue.animate([{ transform: 'scale(1.28)', color: '#ffb26d' }, { transform: 'scale(1)', color: '#f3dfbf' }], { duration: 350 });
     }
     const achievement = e.type === 'slam' ? ['slam', 'EARTHSHAKER', 'The ground is a suggestion.'] : e.type === 'breach' && e.power > 25 ? ['breach', 'HELLO, SUNSHINE', 'That’s what a run-up feels like.'] : e.type === 'eat' && sim.stats.bites === 1 ? ['bite', 'AN APPETITE AWAKENS', 'There’s plenty more where that came from.'] : null;
     if (achievement && !this.completed.has(achievement[0])) {
