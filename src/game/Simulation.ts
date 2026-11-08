@@ -17,7 +17,7 @@ export class Simulation {
   stats: Stats = this.emptyStats();
   prey: Prey[] = []; events: Event[] = [];
   history: { x: number; y: number; z: number }[] = [];
-  private diving = false; private hold = 0; private risePower = 0;
+  private diving = false; private slamInputConsumed = false; private hold = 0; private risePower = 0;
   private rng = random(9327);
   private previous = { x: 0, y: 0, z: 36 };
   constructor() { this.reset(); }
@@ -25,8 +25,8 @@ export class Simulation {
   reset() {
     this.x = 0; this.z = 36; this.depth = .8; this.y = ground(this.x, this.z) - this.depth;
     this.yaw = 0; this.pitch = 0; this.speed = 14; this.vy = 0; this.state = 'sand'; this.charge = 0;
-    this.deep = false; this.slam = false; this.airLunge = false; this.diving = false; this.hold = 0;
-    this.lungeCooldown = 0; this.lungeBoost = 0; this.chain = 0; this.chainTime = 0; this.age = 0;
+    this.deep = false; this.slam = false; this.airLunge = false; this.diving = false; this.slamInputConsumed = false; this.hold = 0; this.risePower = 0;
+    this.lungeCooldown = 0; this.lungeBoost = 0; this.mouth = 0; this.chain = 0; this.chainTime = 0; this.age = 0; this.frame = 0;
     this.stats = this.emptyStats(); this.events.length = 0; this.rng = random(9327); this.prey.length = 0;
     this.previous = { x: this.x, y: this.y, z: this.z };
     this.history = Array.from({ length: 180 }, (_, i) => ({ x: this.x, y: this.y, z: this.z + i * .16 }));
@@ -49,7 +49,13 @@ export class Simulation {
   emit(type: Event['type'], power: number, label?: string, p?: { x: number; y: number; z: number }) {
     this.events.push({ type, power, label, x: p?.x ?? this.x, y: p?.y ?? ground(this.x, this.z), z: p?.z ?? this.z });
   }
+  clearControlState() {
+    this.diving = false; this.hold = 0; this.risePower = 0; this.charge = 0; this.slamInputConsumed = false;
+    if (this.state === 'rise') this.state = 'sand';
+  }
   step(dt: number, input: Input) {
+    if (!input.dive) this.slamInputConsumed = false;
+    const dive = input.dive && !this.slamInputConsumed;
     this.age += dt; this.stats.time += dt; this.frame++;
     this.lungeCooldown = Math.max(0, this.lungeCooldown - dt);
     this.lungeBoost = damp(this.lungeBoost, 0, 4, dt); this.mouth = damp(this.mouth, 0, 5, dt);
@@ -70,11 +76,15 @@ export class Simulation {
     const floor = ground(this.x, this.z);
     if (input.lunge && this.lungeCooldown <= 0 && (this.state !== 'air' || !this.airLunge)) {
       this.lungeCooldown = 1.4; this.lungeBoost = 19; this.mouth = 1;
-      if (this.state === 'air') { this.airLunge = true; this.vy = Math.max(this.vy, 3) + 5; this.yaw += angleDiff(this.yaw, input.yaw) * .75; }
+      if (this.state === 'air') {
+        this.airLunge = true;
+        if (!this.slam) this.vy = Math.max(this.vy, 3) + 5;
+        this.yaw += angleDiff(this.yaw, input.yaw) * .75;
+      }
       this.emit('lunge', 1);
     }
     if (this.state !== 'air') {
-      if (input.dive) {
+      if (dive) {
         this.hold += dt; this.state = 'sand'; this.depth = Math.min(12, this.depth + (4.5 + this.speed * .11) * dt);
         this.charge = launchPower(this.depth, this.speed);
       } else if (this.diving && this.hold > .16 && this.depth > 1.5) {
@@ -87,10 +97,14 @@ export class Simulation {
           this.airLunge = false; this.slam = false; this.stats.breaches++;
           this.emit('breach', this.risePower); this.mouth = .7;
         }
-      } else if (!input.dive) { this.depth = damp(this.depth, .8, 6, dt); this.charge = damp(this.charge, 0, 3, dt); }
+      } else if (!dive) { this.depth = damp(this.depth, .8, 6, dt); this.charge = damp(this.charge, 0, 3, dt); }
       if (this.state !== 'air') this.y = floor - this.depth;
     } else {
-      if (input.dive && !this.diving) { this.slam = true; this.vy = Math.min(this.vy, -44); }
+      if (input.dive && !this.diving) {
+        this.slam = true; this.vy = Math.min(this.vy, -44);
+        // The slam press ends at impact; holding it must not prime a second breach.
+        this.slamInputConsumed = true;
+      }
       this.vy -= 23 * dt; this.y += this.vy * dt;
       const altitude = this.y - floor;
       this.stats.bestAir = Math.max(this.stats.bestAir, altitude);
@@ -150,11 +164,10 @@ export class Simulation {
         if (p.y < floor) { p.y = floor; p.airborne = false; p.vy = 0; p.vx = 0; p.vz = 0; }
       } else if (p.kind === 'rabbit' || p.kind === 'chicken') {
         const scared = distance < 17 && this.depth < 3 && this.speed > 9;
-        const targetYaw = scared ? Math.atan2(dx, -dz) : p.seed + Math.sin(this.age * .23 + p.seed) * 2;
+        const targetYaw = Math.hypot(p.x, p.z) > 178 ? Math.atan2(-p.x, p.z) : scared ? Math.atan2(dx, -dz) : p.seed + Math.sin(this.age * .23 + p.seed) * 2;
         p.yaw += angleDiff(p.yaw, targetYaw) * dt * 4;
         const speed = scared ? 6.5 : 1.1;
         p.x += Math.sin(p.yaw) * speed * dt; p.z -= Math.cos(p.yaw) * speed * dt;
-        if (Math.hypot(p.x, p.z) > 180) p.yaw += Math.PI * dt;
         p.y = ground(p.x, p.z) + (scared ? Math.abs(Math.sin(this.age * 12 + p.seed)) * .4 : 0);
       }
       const edible = p.kind !== 'jeep' || p.flipped;

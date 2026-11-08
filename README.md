@@ -44,6 +44,7 @@ Clicking Enter the dunes captures the mouse. Escape releases it. Browsers that d
 ```sh
 npm test
 npm run build
+npx playwright install ffmpeg
 npm run playtest
 ```
 
@@ -53,4 +54,4 @@ Graphics quality controls pixel ratio, shadows and sand shedding. High caps devi
 
 ## Assets and licenses
 
-Game code, procedural models, shaders, icon and layered Web Audio sound design are original to this project. Barlow and Barlow Condensed by Jeremy Tribby are bundled under the SIL Open Font License in `public/fonts/OFL.txt`. Three.js is MIT licensed; other dependency licenses are available in their npm packages. No downloaded sound recordings are used.
+Game code, procedural models, shaders, icon and procedural Web Audio layers are original to this project. Recorded wind, crunch and stone foley are CC0 derivatives; see [audio credits](public/audio/CREDITS.md) for recordists, sources and edits. Barlow and Barlow Condensed by Jeremy Tribby are bundled under the SIL Open Font License in `public/fonts/OFL.txt`. Three.js is MIT licensed; other dependency licenses are available in their npm packages.

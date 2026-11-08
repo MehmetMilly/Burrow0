@@ -38,13 +38,13 @@ export class GameRenderer {
     else if (e.type === 'eat') this.shake = .09;
   }
   reset(sim: Simulation, menu = false) {
-    this.effects.clear(); this.yaw = sim.yaw; this.pitch = .2; this.deep = 0;
+    this.effects.clear(); this.world.underground = 0; this.yaw = sim.yaw; this.pitch = .2; this.deep = 0;
     this.cameraPosition.set(sim.x + 3, ground(sim.x, sim.z) + 10, sim.z + 21);
     this.cameraTarget.set(sim.x, sim.y + 2, sim.z - 8); this.shake = 0;
     if (menu) {
       const fx = Math.sin(sim.yaw), fz = -Math.cos(sim.yaw), rx = Math.cos(sim.yaw), rz = Math.sin(sim.yaw);
       this.cameraPosition.set(sim.x - fx * 5 - rx * 25, ground(sim.x, sim.z) + 9 + Math.max(0, sim.y - ground(sim.x, sim.z)) * .65, sim.z - fz * 5 - rz * 25);
-      this.cameraTarget.set(sim.x - fx * 13, sim.y - 2, sim.z - fz * 13);
+      this.cameraTarget.set(sim.x - fx * 6, sim.y - 2, sim.z - fz * 6);
     }
   }
   update(sim: Simulation, dt: number, menu: boolean) {
@@ -54,12 +54,13 @@ export class GameRenderer {
     const floor = ground(sim.x, sim.z), altitude = Math.max(0, sim.y - floor);
     if (menu) {
       this.menuAge += dt;
-      const fx = Math.sin(sim.yaw), fz = -Math.cos(sim.yaw);
-      const rx = Math.cos(sim.yaw), rz = Math.sin(sim.yaw);
-      this.desired.set(sim.x - fx * 5 - rx * 25, floor + 9 + altitude * .65, sim.z - fz * 5 - rz * 25);
-      this.look.set(sim.x - fx * 13, sim.y - 2, sim.z - fz * 13);
+      const rx = Math.cos(sim.yaw), rz = Math.sin(sim.yaw), center = this.worm.segments[9].position;
+      this.desired.set(center.x - rx * 26, Math.max(floor + 8, center.y + 7), center.z - rz * 26);
+      this.look.set(center.x, Math.max(floor + 1, center.y + 1), center.z);
+      this.camera.setViewOffset(innerWidth, innerHeight, -innerWidth * .24, 0, innerWidth, innerHeight);
       this.camera.fov = damp(this.camera.fov, 48, 3, dt);
     } else {
+      this.camera.clearViewOffset();
       const distance = 21 + sim.speed * .12 + altitude * .18;
       this.desired.set(sim.x - f.x * distance, floor + 9 + altitude * .68 + this.pitch * 13, sim.z - f.z * distance);
       this.look.set(sim.x + f.x * 8, floor + 1 + altitude * .65 - this.pitch * 6, sim.z + f.z * 8);

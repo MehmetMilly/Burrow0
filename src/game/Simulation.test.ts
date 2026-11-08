@@ -28,8 +28,42 @@ describe('the dive / breach / slam loop', () => {
   it('does not hop without a deliberate dive, and reset clears an outing', () => {
     const sim = new Simulation(); drive(sim, 20, { surge: true });
     expect(sim.stats.breaches).toBe(0); expect(sim.state).toBe('sand');
+    sim.mouth = 1;
     sim.reset(); expect(sim.stats.time).toBe(0); expect(sim.stats.bites).toBe(0);
-    expect(sim.events.length).toBe(0);
+    expect(sim.events.length).toBe(0); expect(sim.frame).toBe(0); expect(sim.mouth).toBe(0);
+  });
+  it('consumes a held slam until release instead of launching another breach on key-up', () => {
+    const sim = new Simulation();
+    drive(sim, 1.6, { dive: true, surge: true }); drive(sim, .8, { surge: true });
+    expect(sim.state).toBe('air'); expect(sim.stats.breaches).toBe(1);
+    drive(sim, 2, { dive: true, surge: true });
+    expect(sim.stats.slams).toBe(1); expect(sim.state).toBe('sand');
+    expect(sim.depth).toBeCloseTo(.8);
+    drive(sim, 1, { surge: true });
+    expect(sim.stats.breaches).toBe(1);
+    // Releasing and pressing again must still start a fresh, deliberate dive.
+    drive(sim, 1.6, { dive: true, surge: true }); drive(sim, .8, { surge: true });
+    expect(sim.stats.breaches).toBe(2);
+  });
+  it('keeps a committed slam falling when the player lunges for a final correction', () => {
+    const sim = new Simulation();
+    sim.state = 'air'; sim.depth = 0; sim.y = ground(sim.x, sim.z) + 25; sim.vy = 10;
+    drive(sim, 1 / 120, { dive: true });
+    drive(sim, 1 / 120, { dive: true, lunge: true, yaw: .5 });
+    expect(sim.slam).toBe(true); expect(sim.vy).toBeLessThan(-40);
+    expect(sim.airLunge).toBe(true);
+    expect(sim.events.filter(e => e.type === 'lunge')).toHaveLength(1);
+  });
+  it.each([false, true])('defuses a paused dive without breaching on resume (already rising: %s)', rising => {
+    const sim = new Simulation();
+    drive(sim, 1.6, { dive: true, surge: true });
+    if (rising) drive(sim, .1, { surge: true });
+    const pausedDepth = sim.depth;
+    sim.clearControlState();
+    expect(sim.depth).toBe(pausedDepth);
+    drive(sim, 1.5);
+    expect(sim.stats.breaches).toBe(0); expect(sim.state).toBe('sand');
+    expect(sim.depth).toBeCloseTo(.8, 1); expect(sim.deep).toBe(false);
   });
   it('throws and breaks nearby props with a committed slam', () => {
     const sim = new Simulation(); const p = sim.prey.find(p => p.kind === 'crate')!;

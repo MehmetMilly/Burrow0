@@ -1,38 +1,53 @@
-# Burrow — session notes
+# Burrow — current handoff
 
-## Current rung
+## State
 
-Rung 1, not yet implemented. `DESIGN.md` records the design decisions and acceptance gates. The repository began with only `BRIEF.md`.
+**Rung 1: playable, in final visual/QA polish.** Rung 2 has not started. The brief's toy gate is being treated seriously: the complete free-roam flow exists, but final integrated art/camera review and target-machine profiling remain. Do not describe this as the campaign or a finished Steam demo.
 
-## Current work
+The repository began with only BRIEF.md. DESIGN.md was written and committed before code. Work stays in this repository. User has explicitly authorized Vercel deployment using the installed, logged-in CLI (`mehmetmilly`), and up to five subagents (GPT-6.1 Sol high/xhigh for critical work). No hosted Sites registration is needed.
 
-Build a polished free-roam dune toy before adding campaign systems. Work in this existing repository; this task is source development, with local browser preview and no hosted Site registration.
+## What exists
 
-## Next actions
+- Vite, strict TypeScript and Three.js; all runtime assets served locally.
+- Fixed-step camera-led swimming, surge/lurk, depth-and-speed launch, ballistic breach, one air lunge, committed slam, swept automatic eating.
+- Fleeing rabbits/chickens, crunchy crates/pots, slam-flipped edible jeeps, six camps and a bounded dune basin. Prey/props and sand particles use instanced rendering.
+- Procedural dune/sky rendering, rock arch, animated flags, distant balloons, near-surface silhouette/wake, deep tremor echoes and a chase/cinematic camera.
+- Pooled grain, soft dust, physical breakaway chunks, shockwave rings and eight persistent terrain-conforming impact scars.
+- Live title → playground → pause/settings/field guide → outing report → replay/title. Persistent sensitivity/invert/volume/quality. No debug UI in shipped play; inspection hook exists only on the dev server.
+- Original layered Web Audio plus bundled CC0 recorded wind, crunch and stone foley. Recordists/source links/edits are in public/audio/CREDITS.md. Barlow fonts and OFL license bundled.
 
-1. Scaffold Vite/TypeScript/Three.js.
-2. Implement terrain, hero, movement and camera together.
-3. Add prey, destruction, effects, audio and complete UI flow.
-4. Playtest with real input, capture screenshots/video, tune against the toy acceptance gates.
+## Latest verified changes
 
-## Verification / limits
+- Eight mechanics tests pass: speed beats stationary depth; ten complete dive/breach/slam cycles; destruction; reset; held slam cannot prime a second breach; lunge cannot reverse a slam; pausing a charged dive/ascent defuses launch intent.
+- Parent integration calls `clearControlState()` on pause and ignores repeated Escape keydown.
+- Earlier complete Chrome run passed title/guide → first bite → deep view → running breach + lunge (~25.5 m) → slam → mouse/keyboard steering → pause/persistent settings → report → replay/reset → title.
+- A separate real-input camp route broke five props and flipped a jeep. That run exposed the held-slam second-breach bug, now covered and fixed.
+- Production builds pass. Final integrated browser checks must be rerun after current parallel art work settles.
 
-No implementation checks yet. Do not claim campaign completion or target-M5 performance without evidence.
+## Active parallel polish (user-authorized)
 
-## First implementation milestone
+- Hero agent: src/render/Worm.ts, continuous armored body/maw and draw batching.
+- World agent: src/render/World.ts, dune lighting, denser central terrain with lower overall geometry, batched tremor view.
+- UI agent: src/UI.ts and src/style.css, readability, feedback, focus, compact layouts.
+- QA agent: scripts/* and QA.md, independent browser/endurance/production checks and compact video review.
+- Physics agent: finished Simulation.ts/tests; parent owns main.ts, Renderer.ts, Effects.ts, Audio.ts and integration.
 
-- Strict TypeScript / Vite / Three.js scaffold; original procedural models, locally bundled Barlow fonts with OFL license.
-- Fixed-step movement, depth-and-speed launch, air lunge, slam, swept eating, fleeing prey, flip-and-eat jeeps, breakable camp props, bounded pooled particles.
-- Sand/sky shaders, layered landscape, segmented plated worm with flower mouth, wake, deep-view echoes, follow camera.
-- Title, in-play teaching/HUD, field guide, persistent settings, pause and outing report; original layered Web Audio.
-- Four mechanics tests pass, including ten repeatable slam cycles and the anti-camping launch rule. Initial production build passes.
-- First Chrome screenshot revealed a washed-out shader palette and too-small menu hero; tuning those before judging the toy.
-- User authorized Vercel previews; CLI is installed/logged in. Deploy once visually reviewed and playable.
+## Browser evidence / performance limits
 
-## Browser playtest milestone
+Screenshots, WebM, telemetry and video review live under ignored `artifacts/`. Repro scripts are committed under scripts/. `npm run playtest` uses real input; optional video is enabled with `BURROW_RECORD_VIDEO=1` (requires `npx playwright install ffmpeg`). Also see camp-playtest, quality-audit, production-smoke and review-video scripts.
 
-- Full real-input Chrome run passed: title/guide → first meal → deep tremor view → running breach (~25.5 m with air lunge) → slam → mouse and keyboard steering → pause → persisted settings → outing report → replay/reset → title.
-- Screenshots and WebM are in ignored `artifacts/playtest/`, with structured telemetry in `report.json`; `scripts/playtest.mjs` reproduces the run.
-- Screenshot review found and fixed bright sky leaking into underground view, gaps in the tapered tail, low-contrast HUD edges and a poor initial title-camera placement.
-- Reduced horizon clutter and batched all 360 sand/debris particles into one instanced draw. Added soft dust and eight persistent, terrain-conforming landing scars.
-- Cloud has no `/dev/dri`; Chrome uses SwiftShader. Initial low-quality recorded run averaged ~257 ms per frame (including screenshot stalls), so it is visual/correctness evidence only. M5 profiling is still open. Frame telemetry now records uncapped real frame times.
+Cloud has **no /dev/dri**; Chrome uses SwiftShader. Observed software frame times are hundreds of milliseconds, vary with capture/CPU load, and **do not establish M5 performance**. The target MacBook Air M5 at 60 fps still needs direct profiling. Particle, prey and tremor batching and terrain reduction address real draw/geometry costs. Renderer memory is lazily uploaded as new views appear; bounded-memory checks must compare warmed scenes rather than first-frame geometry counts.
+
+Visual review has already fixed washed-out sand, horizon clutter, bright sky leaking underground, tail gaps, poor title framing, hidden shallow silhouette and HUD contrast. Latest integrated hero/world/UI captures are still pending.
+
+## Immediate next actions
+
+1. Collect parallel art/UI work; inspect integrated title, surface, deep view, breach and camp impact screenshots.
+2. Run eight mechanics tests, production build, final real-input flow/camp checks, a bounded endurance audit and production smoke (including absence of dev hook).
+3. Review compact video/contact sheet; fix observed game feel/camera defects before considering rung 2.
+4. Commit the finished toy, deploy on Vercel, verify the deployed production flow, and record the literal deployment URL/project here and in README.
+5. Decide the rung-1 acceptance gate honestly. Only then begin Hunt 1's health/hunger/growth/heat/balloon set piece. Preserve the toy as a complete playable scope if stopping here.
+
+## Run
+
+`npm ci`, then `npm run dev`. `npm test` and `npm run build` are required checks. README.md documents controls, scope, quality settings and asset licenses.

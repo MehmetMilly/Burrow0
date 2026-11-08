@@ -1,11 +1,13 @@
 import { clamp, damp } from './math';
 import type { Event, Simulation } from './Simulation';
 
-// Original layered Web Audio design: moving air, granular sand, chitin and sub pressure.
-// All one-shots route through a limiter; no unlicensed recordings or remote requests.
+// Recorded CC0 foley and wind over original sub pressure and sand synthesis.
+// Everything is bundled locally and routed through a limiter. See public/audio/CREDITS.md.
 export class Sound {
   context?: AudioContext;
   master?: GainNode; wind?: GainNode; rumble?: GainNode; filter?: BiquadFilterNode;
+  private recordings = new Map<string, AudioBuffer>();
+  private recordingsLoading?: Promise<void>; private lastDebris = -1;
   private noise?: AudioBuffer; private volume = .65; private active = false;
   async start() {
     if (!this.context) {
@@ -24,6 +26,30 @@ export class Sound {
       const rumble = this.rumble = ctx.createGain(); rumble.gain.value = 0; osc.connect(rumble); rumble.connect(master); osc.start();
     }
     await this.context.resume(); this.active = true;
+    this.recordingsLoading ??= this.loadRecordings(this.context);
+    void this.recordingsLoading;
+  }
+  private async loadRecordings(ctx: AudioContext) {
+    await Promise.all(['desert-wind', 'chitin-crunch', 'rock-fall'].map(async name => {
+      try {
+        const response = await fetch(`/audio/${name}.ogg`);
+        if (!response.ok) return;
+        const buffer = await ctx.decodeAudioData(await response.arrayBuffer()); this.recordings.set(name, buffer);
+        if (name === 'desert-wind' && this.filter) {
+          const source = ctx.createBufferSource(), level = ctx.createGain();
+          source.buffer = buffer; source.loop = true; level.gain.value = 2.4;
+          source.connect(level); level.connect(this.filter); source.start();
+        }
+      } catch { /* The original sound bed remains available if media decoding fails. */ }
+    }));
+  }
+  private sample(name: string, gain: number, rate: number, lowpass = 9000) {
+    const ctx = this.context, buffer = this.recordings.get(name);
+    if (!ctx || !buffer || !this.master) return;
+    const source = ctx.createBufferSource(), level = ctx.createGain(), filter = ctx.createBiquadFilter();
+    source.buffer = buffer; source.playbackRate.value = rate;
+    filter.type = 'lowpass'; filter.frequency.value = lowpass; level.gain.value = gain;
+    source.connect(filter); filter.connect(level); level.connect(this.master); source.start();
   }
   setVolume(v: number) { this.volume = v; if (this.master && this.context) this.master.gain.setTargetAtTime(v * .55, this.context.currentTime, .1); }
   pause(paused: boolean) { this.active = !paused; }
@@ -53,15 +79,17 @@ export class Sound {
   event(e: Event, chain: number) {
     if (!this.context) return;
     if (e.type === 'breach') {
-      this.grit(1.1, .65, 450, 2800); this.tone(68, 27, .8, .6); this.grit(.4, .2, 1800, 5500, .12);
+      this.sample('rock-fall', .33, .65, 2600); this.grit(1.1, .45, 450, 2800); this.tone(68, 27, .8, .6); this.grit(.4, .2, 1800, 5500, .12);
     } else if (e.type === 'slam' || e.type === 'land') {
-      const p = clamp(e.power / 45); this.tone(100, 26, .7, .45 + p * .4); this.grit(.85, .55 + p * .4, 140, 1900);
+      const p = clamp(e.power / 45); this.sample('rock-fall', e.type === 'slam' ? .6 : .28, e.type === 'slam' ? .72 : .9, 4200); this.tone(100, 26, .7, .45 + p * .4); this.grit(.85, .55 + p * .4, 140, 1900);
       this.grit(.3, .35, 400, 3200, .08);
     } else if (e.type === 'eat') {
-      this.grit(.14, .6, 700, 4200); this.grit(.1, .36, 200, 2200, .07); this.tone(170, 64, .18, .3);
+      this.sample('chitin-crunch', .72, .75 + Math.min(chain, 8) * .045); this.grit(.14, .18, 700, 4200); this.grit(.1, .16, 200, 2200, .07); this.tone(170, 64, .18, .3);
       this.tone(260 + Math.min(chain, 8) * 38, 400 + Math.min(chain, 8) * 52, .18, .045, 'triangle', .08);
     } else if (e.type === 'break') {
-      this.grit(.35, .5, 800, 6200); this.tone(130, 60, .22, .25, 'triangle');
+      if (this.context.currentTime - this.lastDebris < .08) return;
+      this.lastDebris = this.context.currentTime;
+      this.sample('rock-fall', .45, 1.2, 6500); this.grit(.35, .3, 800, 6200); this.tone(130, 60, .22, .2, 'triangle');
     } else if (e.type === 'lunge') { this.grit(.27, .33, 500, 3000); this.tone(100, 55, .23, .19); }
   }
   tick() { this.tone(440, 320, .07, .045, 'triangle'); }

@@ -45,7 +45,7 @@ function start() {
 }
 function pause() {
   if (ui.screen !== 'play') return;
-  ui.show('pause'); releaseMouse(); sound.pause(true);
+  ui.show('pause'); sim.clearControlState(); releaseMouse(); sound.pause(true);
 }
 function resume() { ui.show('play'); clearInput(); sound.pause(false); takeMouse(); }
 ui.onSettings = s => { render.setQuality(s.quality); sound.setVolume(s.volume); };
@@ -62,6 +62,7 @@ ui.onAction = action => {
 window.addEventListener('keydown', e => {
   if (['Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code) && ui.screen === 'play') e.preventDefault();
   if (e.code === 'Escape') {
+    if (e.repeat) return;
     if (ui.screen === 'play') pause();
     else if (ui.screen === 'pause') resume();
     else if (ui.screen === 'settings' || ui.screen === 'guide') ui.show(guideOrigin);
@@ -111,8 +112,8 @@ function frame(now: number) {
     const input = inputs();
     while (accumulator >= 1 / 120) {
       if (isDemo) {
-        demoTime += 1 / 120; const cycle = demoTime % 10;
-        sim.step(1 / 120, { surge: true, lurk: false, dive: cycle > 3 && cycle < 5, lunge: false, turn: 0, yaw: Math.sin(demoTime * .09) * 2 - .6 });
+        demoTime += 1 / 120; const cycle = demoTime % 7;
+        sim.step(1 / 120, { surge: true, lurk: false, dive: cycle > 3 && cycle < 3.6, lunge: false, turn: 0, yaw: Math.sin(demoTime * .09) * 2 - .6 });
       } else {
         if (input.turn) { render.yaw += input.turn * 1.4 / 120; input.yaw = render.yaw; }
         sim.step(1 / 120, input);
