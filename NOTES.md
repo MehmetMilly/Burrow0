@@ -50,3 +50,7 @@ Project burrow0, team mehmetmillys-projects, project ID prj_KU2FT0AWBYRZh7sMgxid
 ## Commands
 
 npm ci; npm run dev; npm test; npm run build; npm run preview. Automated Hunt tests can target port 5174 via BURROW_URL. Temporary preview servers should be stopped at handoff. README documents controls, scope and licenses.
+
+## Active continuation: Oasis / Hunt 2
+
+User explicitly requested continuing from90980f8 into Oasis using subagents. Hunt1/toy remain the accepted baseline. DESIGN.md now contains the Hunt2 integration contract; biomes.ts provides immutable shared terrain/water/runway/house data. Root integrates camera/main/campaign persistence; agents own simulation, world, UI, hero/effects/audio and QA. Do not stop at a handoff commit while required Oasis work remains; finish implementation, real-input crossing/plane win, production checks and documentation.
