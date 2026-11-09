@@ -3,8 +3,10 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { colors, geo, mat, mesh } from './palette';
 import { ground, random, damp } from '../game/math';
 import type { Simulation, Prey, PreyKind } from '../game/Simulation';
+import { BIOME_GLSL, terrainHeight } from '../game/biomes';
+import { Oasis, oasisPreyModel, type OasisMotion } from './Oasis';
 
-type Motion = 'goatLeg' | 'personLeg' | 'personArm' | 'turret' | 'barrel' | 'rotor' | 'tailRotor' | 'pennant' | 'flame';
+type Motion = 'goatLeg' | 'personLeg' | 'personArm' | 'turret' | 'barrel' | 'rotor' | 'tailRotor' | 'pennant' | 'flame' | OasisMotion;
 type AnimatedPart = { motion?: Motion; pivot?: [number, number, number]; phase?: number };
 
 // Bake a procedural sculpture into one draw per material; every animal shares it.
@@ -24,6 +26,7 @@ function bake(source: THREE.Group) {
   return out;
 }
 function preyModel(kind: PreyKind) {
+  const oasis = oasisPreyModel(kind); if (oasis) return oasis;
   if (!['rabbit', 'chicken', 'crate', 'urn', 'jeep'].includes(kind)) return huntModel(kind);
   const g = new THREE.Group();
   if (kind === 'rabbit' || kind === 'chicken') {
@@ -277,12 +280,13 @@ const terrainVertex = `
     vec4 mv=modelViewMatrix*vec4(p,1.); vEye=-mv.z;
     gl_Position=projectionMatrix*mv;
   }`;
-const terrainFragment = `
-  uniform float time; uniform float underground;
+const terrainFragment = `${BIOME_GLSL}
+  uniform float time; uniform float underground; uniform float biome;
   varying vec3 vWorld; varying vec3 vNormal; varying float vEye; varying float vWake;
   float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
   void main() {
-    vec3 sun=normalize(vec3(-.7,.4,-.65));
+    if(biome>1.5&&oasisWater(vWorld.xz)&&vWorld.y>1.15)discard;
+    vec3 sun=normalize(mix(vec3(-.7,.4,-.65),vec3(-.28,.95,-.25),step(1.5,biome)));
     vec3 n=normalize(vNormal);
     float light=dot(n,sun);
     float ripplePhase=vWorld.x*2.8+vWorld.z*1.6+sin(vWorld.z*.23)*2.+sin(vWorld.x*.09)*4.;
@@ -291,6 +295,7 @@ const terrainFragment = `
     float wind=sin(vWorld.x*.031-vWorld.z*.014+time*.16)*.5+.5;
     // Broad, copper lee faces give the small ripples a much quieter canvas.
     vec3 shadow=vec3(.58,.37,.29), sand=vec3(.94,.72,.48);
+    if(biome>1.5){shadow=vec3(.64,.59,.44);sand=vec3(.91,.83,.64);}
     float sunFace=smoothstep(-.04,.65,light);
     vec3 color=mix(shadow,sand,sunFace);
     float strata=sin(vWorld.x*.018+vWorld.z*.032+vWorld.y*.22)*.5+.5;
@@ -301,7 +306,7 @@ const terrainFragment = `
     color += pow(fine,65.)*.14*sunFace*(.6+wind*.4)*(1.-smoothstep(8.,42.,vEye));
     color=mix(color,vec3(.94,.77,.55),vWake*.2);
     float fog=1.-exp(-max(vEye,0.)*.0024);
-    color=mix(color,vec3(.86,.64,.49),fog);
+    color=mix(color,mix(vec3(.86,.64,.49),vec3(.79,.83,.73),step(1.5,biome)),fog);
     // The ceiling becomes a soft vibration field instead of a lit sand texture.
     float strataEcho=sin(vWorld.x*.11+vWorld.z*.08+sin(vWorld.z*.035)*2.);
     vec3 under=vec3(.055,.115,.13)+strataEcho*.003;
@@ -310,14 +315,15 @@ const terrainFragment = `
     #include <colorspace_fragment>
   }`;
 const skyFragment = `
-  uniform float underground; varying vec3 vDirection;
+  uniform float underground; uniform float biome; varying vec3 vDirection;
   void main(){
     vec3 d=normalize(vDirection); float y=max(d.y,0.);
     vec3 c=mix(vec3(.91,.67,.49),vec3(.29,.47,.53),pow(y,.55));
     vec3 sun=normalize(vec3(-.7,.24,-.65)); float s=dot(d,sun);
+    if(biome>1.5){c=mix(vec3(.84,.86,.72),vec3(.22,.54,.67),pow(y,.4));sun=normalize(vec3(-.28,.95,-.25));s=dot(d,sun);}
     c+=vec3(.15,.07,.015)*pow(max(s,0.),18.);
     float haze=exp(-abs(d.y-.045)*18.);
-    c=mix(c,vec3(.95,.75,.55),haze*.24);
+    c=mix(c,biome>1.5?vec3(.91,.91,.77):vec3(.95,.75,.55),haze*.24);
     float streak=sin(d.x*19.+d.z*8.+sin(d.z*16.)*.7+d.y*57.);
     float cloud=smoothstep(.65,1.,streak)*smoothstep(.08,.24,d.y)*(1.-smoothstep(.24,.4,d.y));
     c=mix(c,vec3(.86,.77,.63),cloud*.08);
@@ -346,11 +352,11 @@ const echoFragment = `
     gl_FragColor=vec4(color,alpha);
     #include <colorspace_fragment>
   }`;
-const windVertex = `
-  uniform float time; attribute float seed; attribute float along; varying float vAlpha;
+const windVertex = `${BIOME_GLSL}
+  uniform float time; uniform float biome; attribute float seed; attribute float along; varying float vAlpha;
   void main(){
     vec3 p=position; p.x=mod(p.x-along*15.4+time*(7.+seed*4.)+170.,340.)-170.+along*15.4;
-    p.y=sin(p.x*.026+p.z*.016)*4.8+sin(p.z*.048-p.x*.017)*2.7+sin(p.x*.065+p.z*.037)*1.1+sin(p.x*.012-p.z*.009)*4.+.17;
+    p.y=biomeSurface(p.xz,biome)+.17;
     vAlpha=sin(along*3.14159)*(.5+sin(time*.7+seed*20.)*.5)*.14;
     gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
   }`;
@@ -358,12 +364,12 @@ const windFragment = `
   varying float vAlpha; void main(){gl_FragColor=vec4(.94,.8,.6,vAlpha);
     #include <colorspace_fragment>
   }`;
-const markerVertex = `
-  uniform float underground; attribute vec3 warning; varying vec2 vUv; varying vec3 vWarning;
+const markerVertex = `${BIOME_GLSL}
+  uniform float underground; uniform float biome; attribute vec3 warning; varying vec2 vUv; varying vec3 vWarning;
   void main(){
     vUv=uv;vWarning=warning;
     vec3 p=(instanceMatrix*vec4(position,1.)).xyz;
-    p.y=sin(p.x*.026+p.z*.016)*4.8+sin(p.z*.048-p.x*.017)*2.7+sin(p.x*.065+p.z*.037)*1.1+sin(p.x*.012-p.z*.009)*4.+.13-underground*7.;
+    p.y=biomeSurface(p.xz,biome)+.13-underground*7.;
     gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
   }`;
 const markerFragment = `
@@ -396,19 +402,24 @@ export class World {
   private echoBatch: THREE.InstancedMesh;
   private echoSignals: THREE.InstancedBufferAttribute;
   private echoMaterial: THREE.ShaderMaterial;
+  private duneScenery = new THREE.Group();
+  private oasis: Oasis;
+  private biome = 0;
+  private hemi: THREE.HemisphereLight;
+  private fill: THREE.DirectionalLight;
   private windMaterial = new THREE.ShaderMaterial({ vertexShader: windVertex, fragmentShader: windFragment,
-    uniforms: { time: { value: 0 } }, transparent: true, depthWrite: false });
+    uniforms: { time: { value: 0 }, biome: { value: 1 } }, transparent: true, depthWrite: false });
   private markerMaterial = new THREE.ShaderMaterial({ vertexShader: markerVertex, fragmentShader: markerFragment,
-    uniforms: { time: { value: 0 }, underground: { value: 0 } }, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    uniforms: { time: { value: 0 }, underground: { value: 0 }, biome: { value: 1 } }, transparent: true, depthWrite: false, side: THREE.DoubleSide });
   private markerBatch: THREE.InstancedMesh; private markerWarnings: THREE.InstancedBufferAttribute;
   private seenMarkers = new Set<number>(); private shotAge = -10;
   private previousAge = 0;
   underground = 0; skyMaterial: THREE.ShaderMaterial;
   trails = Array.from({ length: 12 }, () => new THREE.Vector3());
-  constructor(scene: THREE.Scene, sim: Simulation) {
+  constructor(private scene: THREE.Scene, sim: Simulation) {
     scene.background = new THREE.Color(0xdca578); scene.fog = new THREE.FogExp2(0xd6a07b, .0033);
     const sky = new THREE.Mesh(new THREE.SphereGeometry(1400, 32, 20), new THREE.ShaderMaterial({
-      side: THREE.BackSide, depthWrite: false, uniforms: { underground: { value: 0 } },
+      side: THREE.BackSide, depthWrite: false, uniforms: { underground: { value: 0 }, biome: { value: 1 } },
       vertexShader: 'varying vec3 vDirection; void main(){vDirection=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
       fragmentShader: skyFragment
     })); this.skyMaterial = sky.material; scene.add(sky);
@@ -422,18 +433,21 @@ export class World {
     }
     geometry.computeVertexNormals();
     this.sandMaterial = new THREE.ShaderMaterial({ vertexShader: terrainVertex, fragmentShader: terrainFragment,
-      uniforms: { trail: { value: this.trails }, time: { value: 0 }, underground: { value: 0 }, wormScale: { value: 1 } }, side: THREE.DoubleSide });
+      uniforms: { trail: { value: this.trails }, time: { value: 0 }, underground: { value: 0 }, wormScale: { value: 1 }, biome: { value: 1 } }, side: THREE.DoubleSide });
     this.terrain = new THREE.Mesh(geometry, this.sandMaterial); scene.add(this.terrain);
-    const hemi = new THREE.HemisphereLight(0xffe2b1, 0x7a6867, 2.6); scene.add(hemi);
+    const hemi = this.hemi = new THREE.HemisphereLight(0xffe2b1, 0x7a6867, 2.6); scene.add(hemi);
     const sun = new THREE.DirectionalLight(0xffd5a0, 3.6); sun.position.set(-90, 120, -80);
     sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.left = -65; sun.shadow.camera.right = 65;
     sun.shadow.camera.top = 65; sun.shadow.camera.bottom = -65; sun.shadow.camera.near = 1; sun.shadow.camera.far = 350;
     sun.shadow.normalBias = .09; sun.shadow.bias = -.0004;
     scene.add(sun, sun.target);
-    const fill = new THREE.DirectionalLight(0x86c5ce, 1.2); fill.position.set(20, 30, 80); scene.add(fill);
+    const fill = this.fill = new THREE.DirectionalLight(0x86c5ce, 1.2); fill.position.set(20, 30, 80); scene.add(fill);
     scene.userData.sun = sun;
     this.makeLandscape();
-    const kinds: PreyKind[] = ['rabbit', 'chicken', 'crate', 'urn', 'jeep', 'goat', 'militia', 'pickup', 'helicopter', 'balloon'];
+    this.duneScenery.add(...this.scenery.children.slice());
+    this.oasis = new Oasis(); this.scenery.add(this.duneScenery, this.oasis.group);
+    this.winds.forEach(wind => this.scenery.add(wind));
+    const kinds: PreyKind[] = ['rabbit', 'chicken', 'crate', 'urn', 'jeep', 'goat', 'militia', 'pickup', 'helicopter', 'balloon', 'civilian', 'marketCart', 'building', 'sonarDrone', 'plane'];
     const templates = new Map(kinds.map(k => [k, preyModel(k)]));
     const echoPlane = new THREE.PlaneGeometry(2, 2); echoPlane.rotateX(-Math.PI / 2);
     const echoSeed = new THREE.SphereGeometry(.13, 6, 4); echoSeed.scale(1, 2, 1); echoSeed.translate(0, .22, 0);
@@ -467,6 +481,25 @@ export class World {
     this.markerBatch = new THREE.InstancedMesh(markerGeometry, this.markerMaterial, 12); this.markerBatch.frustumCulled = false;
     this.markerBatch.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.markerBatch.visible = false;
     scene.add(this.props, this.scenery, this.sense, this.markerBatch);
+    this.setBiome(sim);
+  }
+  private setBiome(sim: Simulation) {
+    const index = sim.mode === 'hunt' ? sim.hunt.index : 1;
+    if (index === this.biome) return;
+    this.biome = index;
+    const oasis = index === 2;
+    this.duneScenery.visible = !oasis; this.oasis.group.visible = oasis;
+    const position = this.terrain.geometry.attributes.position;
+    for (let i = 0; i < position.count; i++) position.setY(i, terrainHeight(position.getX(i), position.getZ(i), index));
+    position.needsUpdate = true; this.terrain.geometry.computeVertexNormals(); this.terrain.geometry.computeBoundingSphere();
+    for (const material of [this.sandMaterial, this.skyMaterial, this.windMaterial, this.markerMaterial]) material.uniforms.biome.value = index;
+    const sun = this.scene.userData.sun as THREE.DirectionalLight;
+    sun.color.setHex(oasis ? 0xfff3ce : 0xffd5a0); sun.intensity = oasis ? 3.3 : 3.6;
+    this.hemi.color.setHex(oasis ? 0xdaf1e8 : 0xffe2b1); this.hemi.groundColor.setHex(oasis ? 0x9a8867 : 0x7a6867); this.hemi.intensity = oasis ? 2.9 : 2.6;
+    this.fill.color.setHex(oasis ? 0xbce8e7 : 0x86c5ce); this.fill.intensity = oasis ? .85 : 1.2;
+    (this.scene.background as THREE.Color).setHex(oasis ? 0xb7d8d2 : 0xdca578);
+    this.scene.fog = new THREE.FogExp2(oasis ? 0xc8d4bb : 0xd6a07b, oasis ? .0025 : .0033);
+    this.scene.userData.sunOffset = oasis ? new THREE.Vector3(-38, 150, -35) : new THREE.Vector3(-90, 120, -80);
   }
   private makeLandscape() {
     const rng = random(54);
@@ -525,6 +558,7 @@ export class World {
     const wind = new THREE.LineSegments(windGeometry, this.windMaterial); wind.frustumCulled = false; this.winds.push(wind); this.scenery.add(wind);
   }
   update(sim: Simulation, dt: number) {
+    this.setBiome(sim); if (this.biome === 2) this.oasis.update(sim.age);
     if (sim.age < this.previousAge) { this.seenMarkers.clear(); this.shotAge = -10; }
     this.previousAge = sim.age;
     this.underground = damp(this.underground, sim.deep ? 1 : 0, sim.deep ? 4 : 8, dt);
@@ -535,7 +569,7 @@ export class World {
     this.windMaterial.uniforms.time.value = sim.age;
     for (let i = 0; i < 12; i++) {
       const p = sim.history[Math.min(i * 4, sim.history.length - 1)];
-      const depth = ground(p.x, p.z) - p.y;
+      const depth = sim.ground(p.x, p.z) - p.y;
       this.trails[i].set(p.x, depth > 0 && depth < 3 ? (1 - depth / 3) * (1 - i / 16) : 0, p.z);
     }
     this.props.visible = this.underground < .65; this.scenery.visible = this.underground < .65;
@@ -543,13 +577,14 @@ export class World {
     sim.prey.forEach((p, i) => {
       const model = this.models[i]; model.visible = p.alive;
       if (p.alive) {
+        const previousY = model.position.y, previousYaw = model.rotation.y, previousPitch = model.rotation.x, previousRoll = model.rotation.z;
         model.position.set(p.x, p.y, p.z); model.rotation.set(p.flipped ? Math.PI : p.airborne && p.kind !== 'helicopter' && p.kind !== 'balloon' ? sim.age * p.spin : 0, p.yaw, 0);
         model.scale.setScalar(1);
         if (p.flipped) model.position.y += 2.4;
         if (p.kind === 'rabbit' || p.kind === 'chicken') {
           const near = Math.hypot(p.x - sim.x, p.z - sim.z) < 17 && sim.depth < 3;
           model.rotation.x += Math.sin(sim.age * (near ? 14 : 6) + p.seed) * (near ? .22 : .035);
-        } else if (p.kind === 'goat' || p.kind === 'militia') {
+        } else if (p.kind === 'goat' || p.kind === 'militia' || p.kind === 'civilian') {
           const scared = Math.hypot(p.x - sim.x, p.z - sim.z) < 35 && sim.depth < 4;
           model.position.y += Math.abs(Math.sin(sim.age * (scared ? 11 : 6) + p.seed)) * (scared ? .17 : .035);
           model.rotation.x += scared ? -.12 : .025;
@@ -560,15 +595,26 @@ export class World {
           model.rotation.set(-.08 + Math.sin(sim.age * .9) * .045 + Math.exp(-Math.max(0, sim.age - this.shotAge) * 15) * .07, p.yaw, Math.sin(sim.age * 1.1) * .09);
         } else if (p.kind === 'balloon') {
           model.rotation.set(Math.sin(sim.age * .7) * .018, p.yaw, Math.sin(sim.age * .55) * .025);
+        } else if (p.kind === 'building') {
+          const variation = p.seed % 1;
+          model.scale.set(.92 + variation * .2, .86 + variation * .3, .92 + variation * .13);
+        } else if (p.kind === 'marketCart') {
+          model.rotation.z = Math.sin(sim.age * 5 + p.seed) * .035;
+        } else if (p.kind === 'sonarDrone') {
+          model.rotation.set(Math.sin(sim.age * 1.3 + p.seed) * .07, p.yaw, Math.sin(sim.age * 1.5 + p.seed) * .06);
+        } else if (p.kind === 'plane') {
+          const pitch = p.airborne ? Math.max(-.2, Math.min(.2, Math.atan2(p.y - previousY, Math.max(.01, dt * Math.hypot(p.vx, p.vz))))) : 0;
+          const turn = Math.atan2(Math.sin(p.yaw - previousYaw), Math.cos(p.yaw - previousYaw)) / Math.max(dt, .001);
+          model.rotation.set(damp(previousPitch, pitch, 3, dt), p.yaw, damp(previousRoll, p.airborne ? Math.max(-.4, Math.min(.4, -turn * .32)) : 0, 3, dt));
         }
       }
       model.updateMatrix();
       const e = this.echoes[i], distance = Math.hypot(p.x - sim.x, p.z - sim.z), range = sim.speed < 10 ? 110 : 70;
       e.visible = p.alive && distance < range;
-      e.position.set(p.x, ground(p.x, p.z) - 5.3, p.z);
+      e.position.set(p.x, sim.ground(p.x, p.z) - 5.3, p.z);
       e.scale.setScalar(p.radius * 1.4 + 1.5); e.updateMatrix();
       this.echoBatch.setMatrixAt(i, e.visible ? e.matrix : this.hidden);
-      const dangerous = p.kind === 'militia' || p.kind === 'pickup' || p.kind === 'helicopter';
+      const dangerous = p.kind === 'militia' || p.kind === 'pickup' || p.kind === 'helicopter' || p.kind === 'sonarDrone';
       this.echoSignals.setY(i, sim.canEat(p) ? 0 : dangerous ? 1 : .5);
       this.echoSignals.setZ(i, Math.sqrt(Math.max(0, 1 - distance / range)) * (p.kind === 'rabbit' || p.kind === 'chicken' || p.airborne ? 1 : .8));
     });
@@ -591,6 +637,8 @@ export class World {
     for (const id of this.seenMarkers) if (!sim.markers.some(marker => marker.id === id)) this.seenMarkers.delete(id);
     this.markerBatch.instanceMatrix.needsUpdate = true; this.markerWarnings.needsUpdate = true;
     for (const batch of this.preyBatches) {
+      batch.mesh.visible = batch.indices.some(index => sim.prey[index].alive);
+      if (!batch.mesh.visible) continue;
       batch.indices.forEach((index, slot) => {
         const p = sim.prey[index];
         if (!p.alive) { batch.mesh.setMatrixAt(slot, this.hidden); return; }
@@ -626,6 +674,9 @@ export class World {
       }
       case 'rotor': this.articulation.rotation.y = sim.age * 37; break;
       case 'tailRotor': this.articulation.rotation.x = sim.age * 53; break;
+      case 'propeller': this.articulation.rotation.z = sim.age * (prey.airborne ? 55 : 27); break;
+      case 'cartWheel': this.articulation.rotation.x = sim.age * 2.4; break;
+      case 'dish': this.articulation.rotation.y = sim.age * 1.6; break;
       case 'pennant': this.articulation.rotation.set(Math.sin(sim.age * 4) * .17, Math.sin(sim.age * 5) * .35, Math.sin(sim.age * 3) * .15); break;
       case 'flame': this.articulation.scale.set(.8, .65 + Math.sin(sim.age * 17) * .15, .8); break;
     }

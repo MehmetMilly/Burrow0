@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { colors, geo, mat, mesh } from './palette';
-import { ground, damp } from '../game/math';
+import { damp } from '../game/math';
+import { isWater } from '../game/biomes';
 import type { Simulation } from '../game/Simulation';
 
 const point = new THREE.Vector3(), tangent = new THREE.Vector3(), normal = new THREE.Vector3();
@@ -9,8 +10,8 @@ const transform = new THREE.Matrix4(), local = new THREE.Object3D();
 const featureScale = new THREE.Matrix4(), crestScale = new THREE.Matrix4();
 const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
 const bodyCount = 23, sides = 16;
-const stageTints = [new THREE.Color().setRGB(.82, .94, 1.05), new THREE.Color().setRGB(.98, 1.04, .98), new THREE.Color().setRGB(1.16, 1.05, .77)];
-type Attachment = { segment: number; local: THREE.Matrix4; jaw?: number; stage?: 1 | 2; crest?: boolean };
+const stageTints = [[.82, .94, 1.05], [.98, 1.04, .98], [1.16, 1.05, .77], [.91, 1.16, 1.10], [.79, 1.18, 1.24]].map(c => new THREE.Color().setRGB(c[0], c[1], c[2]));
+type Attachment = { segment: number; local: THREE.Matrix4; jaw?: number; stage?: 1 | 2 | 3 | 4; crest?: boolean };
 type Batch = { mesh: THREE.InstancedMesh; attachments: Attachment[] };
 
 // A cupped, thick carapace. Its narrow leading edge slides under the next plate;
@@ -131,7 +132,9 @@ export class Worm {
   private bulges = new Float32Array(bodyCount);
   private visualScale = 1;
   private wasHunt = false;
-  private features = [0, 0];
+  private features = [0, 0, 0, 0];
+  private lastFrame = -1; private lastHunt = 1;
+  private path = Array.from({ length: 512 }, () => new THREE.Vector3());
 
   constructor(scene: THREE.Scene) {
     for (let i = 0; i < bodyCount; i++) {
@@ -155,6 +158,11 @@ export class Worm {
     // existing fin draw and remain completely absent from the free-roam hero.
     for (let i = 1; i <= 11; i += 2) for (const sign of [-1, 1]) {
       this.attach(fins, i, [0, 0, -.10], [.8, .83, .98], [0, 0, -sign * .98]).stage = 1;
+    }
+
+    // Oasis adults earn a lower shoulder fan, preserving their existing crown.
+    for (let i = 1; i <= 15; i += 2) for (const sign of [-1, 1]) {
+      this.attach(fins, i, [sign * .08, -.06, -.14], [1, 1.1, 1.35], [0, 0, -sign * 1.55]).stage = 3;
     }
 
     // One continuous body under the sliding plates keeps tight bends and the
@@ -222,6 +230,14 @@ export class Worm {
     for (const i of [0, 2, 4, 6]) for (const sign of [-1, 1]) {
       this.attach(hooks, i, [sign * .59, .68, -.20], [1.15, 1.75 - i * .09, 1.8], [Math.PI, 0, sign * .55]).stage = 2;
     }
+    // The full-grown Oasis crest reaches down the back; extra jaw hooks give
+    // the cargo hunter a distinct silhouette without any new draw batches.
+    for (const i of [1, 3, 5, 8, 11, 14]) {
+      this.attach(hooks, i, [0, .88, -.30], [1.1, 2.1 - i * .055, 2.2], [Math.PI, 0, 0]).stage = 4;
+    }
+    for (const sign of [-1, 1]) {
+      this.attach(hooks, 0, [sign * .84, -.32, .04], [1.45, 2.3, 2.5], [.1, 0, sign * 1.28]).stage = 3;
+    }
     this.finishBatches();
 
     this.ghosts = new THREE.InstancedMesh(geo.sphere, new THREE.MeshBasicMaterial({ color: colors.ink, transparent: true, opacity: .26, depthWrite: false, depthTest: false }), bodyCount);
@@ -249,17 +265,17 @@ export class Worm {
   }
 
   update(sim: Simulation, dt: number) {
-    const hunt = sim.mode === 'hunt', stage = hunt ? sim.hunt.stage : 0;
-    const targetScale = hunt ? sim.hunt.scale : 1;
-    if (!hunt || !this.wasHunt) {
-      this.visualScale = targetScale;
-      this.features[0] = hunt && stage >= 1 ? 1 : 0; this.features[1] = hunt && stage >= 2 ? 1 : 0;
-    } else {
-      this.visualScale = damp(this.visualScale, targetScale, 8, dt);
-      this.features[0] = damp(this.features[0], stage >= 1 ? 1 : 0, 6, dt);
-      this.features[1] = damp(this.features[1], stage >= 2 ? 1 : 0, 6, dt);
-    }
-    this.wasHunt = hunt;
+    const hunt = sim.mode === 'hunt', biome = hunt ? sim.hunt.index : 1;
+    const stage = hunt ? sim.hunt.stage + (biome === 2 ? 2 : 0) : 0;
+    const requestedScale = hunt ? sim.hunt.scale : 1;
+    const targetScale = Number.isFinite(requestedScale) ? Math.max(.1, requestedScale) : 1;
+    const reset = !hunt || !this.wasHunt || biome !== this.lastHunt || sim.frame < this.lastFrame;
+    this.visualScale = reset ? targetScale : damp(this.visualScale, targetScale, 8, dt);
+    this.features.forEach((value, i) => {
+      const wanted = hunt && stage > i ? 1 : 0;
+      this.features[i] = reset ? wanted : damp(value, wanted, 6, dt);
+    });
+    this.wasHunt = hunt; this.lastFrame = sim.frame; this.lastHunt = biome;
     const scale = this.visualScale, flash = hunt ? sim.hunt.growthFlash : 0;
     this.plateMaterial.color.setRGB(1, 1, 1);
     this.finMaterial.color.setHex(0x29434c);
@@ -268,10 +284,11 @@ export class Worm {
     if (hunt) {
       this.plateMaterial.color.copy(stageTints[stage]); this.finMaterial.color.multiply(stageTints[stage]); skinMaterial.color.copy(stageTints[stage]);
     }
+    this.plateMaterial.roughness = damp(this.plateMaterial.roughness, sim.inWater ? .38 : .61, 2, dt);
     this.plateMaterial.emissive.setRGB(flash * .25, flash * .11, flash * .025);
     this.finMaterial.emissive.setRGB(flash * .16, flash * .065, flash * .015);
     // Scale the crest around its buried root so it stays attached as it grows.
-    const crest = hunt ? .68 + stage * .29 + flash * .06 : 1;
+    const crest = hunt ? [.68, .97, 1.26, 1.40, 1.54][stage] + flash * .06 : 1;
     crestScale.makeScale(1, crest, 1); crestScale.setPosition(0, .82 * (1 - crest), 0);
     this.bulges.fill(0);
     if (hunt) for (const meal of sim.digestion) {
@@ -284,18 +301,28 @@ export class Worm {
     }
     this.open = damp(this.open, Math.max(sim.mouth, sim.state === 'air' ? .62 : .10), 12, dt);
     this.jaws.forEach(j => { j.rotation.x = .04 - this.open * 1.03; j.updateMatrix(); });
-    let sample = 0, length = 0;
-    const h = sim.history;
+    let sample = 0, length = 0, pathCount = 0;
+    // The render trail stays finite even during a reset or a short saved trail.
+    // Positions already live in world space: only radii and spacing scale.
+    for (const p of sim.history) {
+      if (pathCount === this.path.length) break;
+      if (Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z)) this.path[pathCount++].set(p.x, p.y, p.z);
+    }
+    if (!pathCount) { this.path[0].set(sim.x, sim.y, sim.z); pathCount = 1; }
+    if (pathCount === 1) {
+      this.path[1].copy(this.path[0]).add(tangent.set(-Math.sin(sim.yaw), 0, Math.cos(sim.yaw)).multiplyScalar(.16)); pathCount = 2;
+    }
+    const h = this.path;
     for (let i = 0; i < this.segments.length; i++) {
       const wanted = i * .63 * scale;
-      while (sample < h.length - 2) {
+      while (sample < pathCount - 2) {
         const d = Math.hypot(h[sample + 1].x - h[sample].x, h[sample + 1].y - h[sample].y, h[sample + 1].z - h[sample].z);
         if (length + d >= wanted) break;
         length += d; sample++;
       }
       const a = h[sample], b = h[sample + 1] ?? a;
-      const d = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) || 1;
-      const t = Math.min(1, Math.max(0, (wanted - length) / d));
+      const d = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+      const t = d > .000001 ? Math.min(1, Math.max(0, (wanted - length) / d)) : 0;
       const g = this.segments[i];
       g.position.set(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
       // During a reset or an unusually short trail, extend the last traveled
@@ -318,9 +345,9 @@ export class Worm {
         g.rotation.set(-Math.atan2(tangent.y, Math.hypot(tangent.x, tangent.z)), Math.atan2(tangent.x, tangent.z), 0, 'YXZ');
       }
       g.updateMatrix();
-      const surface = ground(g.position.x, g.position.z), depth = surface - g.position.y;
+      const surface = sim.surface(g.position.x, g.position.z), depth = surface - g.position.y;
       g.visible = depth < 1.65 * scale || sim.deep;
-      if (!sim.deep && depth > .15 * scale && depth < 4 * scale) {
+      if (!sim.deep && !isWater(g.position.x, g.position.z, biome) && depth > .15 * scale && depth < 4 * scale) {
         local.position.set(g.position.x, surface + .06, g.position.z); local.rotation.set(0, Math.atan2(tangent.x, tangent.z), 0);
         local.scale.set(g.scale.x * .92 * (1 - depth * .07 / scale), .045, .48 * scale); local.updateMatrix(); this.ghosts.setMatrixAt(i, local.matrix);
       } else this.ghosts.setMatrixAt(i, hidden);

@@ -112,3 +112,99 @@ button:active{filter:brightness(.92)}
 @media(max-height:650px){.expedition-copy h2{font-size:67px;margin:9px 0 15px}.expedition-intro{display:none}.expedition-objective{margin-top:8px}.expedition-copy>.primary{height:49px;margin-top:20px}.expedition-duration{font-size:7px;margin-top:10px}.vital{margin-bottom:11px}.vital>div:first-child{font-size:8px}.vital small,.growth-readout small{font-size:6px}.growth-readout{padding-top:10px;margin-top:13px}.growth-readout>div:first-child{font-size:15px}.growth-readout b{font-size:7px}.heat-readout{top:21%;width:124px}.heat-readout .hunt-score{margin-top:14px}.heat-readout .hunt-score b{font-size:24px}.biggest-bite{right:3%;bottom:12%;width:150px}.biggest-bite>strong{font-size:17px}.biggest-bite>span{font-size:6px}}
 .apex-marker{position:absolute;z-index:3;transform:translate(-50%,-50%);text-align:center;pointer-events:none;color:#f3dfbf;text-shadow:0 1px 7px #132b34;font-size:7px;letter-spacing:1.4px;opacity:.8}.apex-marker>i{display:block;font:20px Barlow,sans-serif;margin-bottom:6px;color:var(--orange)}.apex-marker:not(.offscreen)>i{font-size:0;width:17px;height:17px;border:1px solid #f3dfbfbb;border-radius:50%;transform:none!important;margin:0 auto 6px}.apex-marker small{display:block;font-size:6px;letter-spacing:.6px;margin-top:4px;opacity:.75}.apex-marker.ready{color:#ffd29b}.apex-marker.ready:not(.offscreen)>i{border-color:#ffc17d;box-shadow:0 0 14px #ffad5d44}.hunt-score.unbanked b{color:#ffc78d}.hunt-score.unbanked::after{content:' IN CHAIN';font-size:6px;letter-spacing:.6px;opacity:.65;display:block;margin-top:3px}
 #hud[data-mode=hunt] .deep-label{top:calc(5% + 90px);bottom:auto;font-size:9px;letter-spacing:3px}#hud.under-fire .lesson-number,#hud.under-fire #lesson-title{color:#ffb174}#hud.under-fire .lesson{border-left:2px solid #ec885a;padding-left:11px;background:linear-gradient(90deg,#172d36aa,transparent);padding-block:7px}#hud.under-fire .lesson-number{border-bottom:0}#hud.under-fire .lesson p{opacity:1}
+/* A two-stop expedition, from the first light to the high water. */
+.saved-continue{display:block;text-align:left;width:100%;padding:14px 0 0;background:none;color:var(--cream)}
+.saved-continue>span{font:16px Condensed,sans-serif;letter-spacing:1.4px;display:block}
+.saved-continue>small{display:block;color:var(--orange);font-size:7px;letter-spacing:1.2px;margin-top:5px}
+.saved-continue:hover>span{color:#ffba7d;transform:none}
+.expedition-layout{grid-template-columns:.86fr 1.14fr;gap:7%;inset:20% 8% 8%}
+.expedition-map{aspect-ratio:1;max-height:100%;width:100%;align-self:center;overflow:hidden;background:radial-gradient(ellipse at 65% 30%,#9cbba323,transparent 45%),radial-gradient(ellipse at 25% 80%,#dc9c512b,transparent 65%)}
+.expedition-map>svg{position:absolute;inset:0}
+.expedition-map .map-region{font-size:8px;letter-spacing:2px;opacity:.8}
+.expedition-map .map-coordinate{font-size:7px;letter-spacing:1px;bottom:19px;opacity:.6}
+.expedition-map .map-progress{left:auto;right:20px;top:auto;bottom:19px;font-size:7px;letter-spacing:1px;opacity:.6}
+.map-water>path:first-child{fill:#8ebfb32c;stroke:#9ebfb16b;stroke-width:1}
+.map-water>path:last-child{stroke:#d7c29699;stroke-width:5}
+.map-landmarks{opacity:.35;stroke-width:1.4}
+.map-stop{position:absolute;text-align:left;padding:12px 14px 12px 45px;background:#122c33c4;border:1px solid #f3dfbf2b;min-width:176px;transition:background .2s,border-color .2s;box-shadow:0 4px 22px #10232b33}
+.map-stop>i{position:absolute;left:12px;top:13px;display:flex;align-items:center;justify-content:center;width:23px;height:23px;border:1px solid #f3dfbf66;border-radius:50%;font:12px Condensed,sans-serif;font-style:normal;color:var(--orange)}
+.map-stop>strong{font:23px/1 Condensed,sans-serif;letter-spacing:1.6px;display:block}
+.map-stop>span{font-size:7px;letter-spacing:1.1px;display:block;margin-top:7px;opacity:.8}
+.map-stop>small{font-size:6px;letter-spacing:.7px;display:block;margin-top:10px;color:#e4ac78;white-space:nowrap}
+.map-stop:hover:not(:disabled){background:#28413fe8;border-color:#f3dfbf88}
+.map-stop:hover>span{transform:none}
+.map-stop.selected{border-color:var(--orange);box-shadow:inset 3px 0 var(--orange),0 4px 22px #10232b33;background:#293b37e6}
+.map-stop.complete>i{background:var(--orange);color:var(--ink);border-color:var(--orange)}
+.map-stop.locked{opacity:.53;background:#142b32a6}
+.map-stop.locked>i{color:var(--cream)}
+.stop-dunes{left:13%;top:62%}.stop-oasis{left:48%;top:20%}
+.expedition-screen[data-hunt="2"] .expedition-copy>.eyebrow{color:#a9cbb8}
+.expedition-screen[data-hunt="2"] .expedition-survival{display:block;font-size:11px;line-height:1.6;opacity:.75;margin:15px 0 0}
+.expedition-screen[data-hunt="2"] .expedition-objective{margin-top:15px}
+.expedition-screen[data-hunt="2"] .expedition-intro{margin-bottom:0}
+.expedition-screen[data-hunt="2"] .expedition-copy>.primary{margin-top:19px}
+.expedition-duration{line-height:1.8;letter-spacing:1px;font-size:7px}
+#report-continue{white-space:nowrap;min-width:250px}
+.report-screen[data-result="won"] .report-actions:has(#report-continue:not([hidden])){gap:22px;flex-wrap:wrap}
+.report-actions #report-replay.text-button{padding:14px 0;font-size:9px;gap:12px}
+@media(max-width:1050px){
+  .expedition-layout{inset:21% 6% 7%;gap:5%;grid-template-columns:.9fr 1.1fr}
+  .expedition-header{left:6%;right:6%;font-size:9px}
+  .expedition-header small{font-size:6px;letter-spacing:1.1px}
+  .map-stop{min-width:155px;padding:10px 10px 10px 37px}
+  .map-stop>i{left:9px;top:10px;width:20px;height:20px;font-size:10px}
+  .map-stop>strong{font-size:20px}.map-stop>small{font-size:5px;letter-spacing:.4px}
+  .stop-oasis{left:44%;top:20%}.stop-dunes{left:9%;top:61%}
+  .expedition-map .map-progress{bottom:35px;left:20px;right:auto}
+  #report-continue{min-width:225px;font-size:16px;padding-inline:20px;gap:18px}
+  .report-screen[data-result="won"] .report-actions:has(#report-continue:not([hidden])){gap:16px}
+}
+@media(max-height:650px){
+  .expedition-layout{inset:21% 7% 7%;grid-template-columns:.9fr 1.1fr;gap:7%}
+  .expedition-copy h2{font-size:61px;margin:8px 0 12px}
+  .expedition-copy>.eyebrow{font-size:7px;letter-spacing:1.6px;margin-bottom:0}
+  .expedition-objective>strong{font-size:21px;margin-block:4px}
+  .expedition-objective p{font-size:10px;line-height:1.6}
+  .expedition-copy>.primary{height:46px;margin-top:17px;min-width:225px;font-size:16px}
+  .expedition-screen[data-hunt="2"] .expedition-survival{font-size:9px;line-height:1.5;margin-top:10px}
+  .expedition-screen[data-hunt="2"] .expedition-objective{margin-top:3px}
+  .expedition-screen[data-hunt="2"] .expedition-copy>.primary{margin-top:14px}
+  .expedition-duration{font-size:6px;margin-top:8px}
+  .expedition-duration span{margin-left:4px}
+  .expedition-map{width:min(100%,360px);justify-self:center}
+  .map-stop>strong{font-size:18px}.map-stop>span{font-size:6px}.map-stop>small{margin-top:7px}
+  .map-stop{padding-block:9px;min-width:145px}
+  .map-stop>i{top:9px}
+  .expedition-header{top:4%}
+  .expedition-header .worm-mark{width:34px;height:34px}
+  .expedition-map .map-region{font-size:6px;left:15px;top:15px}
+  .expedition-map .map-coordinate{font-size:5px;left:15px;bottom:15px}
+  .expedition-map .map-progress{font-size:5px;left:15px;bottom:29px}
+  .title-copy{top:23%}
+  .title-copy h1{font-size:100px;margin-block:12px 15px}
+  .title-actions{margin-top:20px}
+  .title-actions>.primary{height:48px;font-size:16px}
+  .saved-continue{padding-top:10px}.saved-continue>span{font-size:14px}.saved-continue>small{font-size:6px;margin-top:3px}
+  .title-actions:has(.saved-continue:not([hidden])) .secondary-actions{margin-top:12px}
+  .title-actions:has(.saved-continue:not([hidden])) .free-roam-button{padding-top:12px}
+  .title-copy:has(.saved-continue:not([hidden])) .scope-note{display:none}
+  .title-footer{padding-top:13px;font-size:7px}
+  .report-screen[data-result="won"] .report-actions:has(#report-continue:not([hidden])){margin-top:12px}
+}
+@media(max-width:850px) and (max-height:650px){
+  .expedition-map{aspect-ratio:.95}
+  .stop-oasis{left:40%;top:20%}.stop-dunes{left:8%;top:60%}
+  .map-stop{min-width:142px}
+  .expedition-header>.text-button{font-size:8px;letter-spacing:1px;gap:15px}
+  .expedition-copy h2{font-size:58px}
+  .expedition-screen[data-hunt="2"] .expedition-copy h2{margin-bottom:9px}
+  .expedition-duration{font-size:5.5px;letter-spacing:.8px}
+  .heat-readout{width:120px}
+  .lesson{max-width:64%}
+  .lesson p{font-size:9px;max-width:420px}
+  .lesson strong{font-size:13px}
+  .growth-readout>div:first-child{font-size:14px}
+  .growth-readout b{font-size:6px}
+  .growth-callout>span{font-size:7px;letter-spacing:3px}
+  .growth-callout strong{font-size:40px;letter-spacing:2px}
+}

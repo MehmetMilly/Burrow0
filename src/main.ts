@@ -1,7 +1,9 @@
 import './style.css';
 import { Simulation } from './game/Simulation';
 import type { Input, HuntState, Stats } from './game/Simulation';
-import { clamp, ground } from './game/math';
+import { clamp } from './game/math';
+import type { HuntIndex } from './game/biomes';
+import { loadCampaign, saveCampaign, recordVictory, entryScale } from './game/campaign';
 import { Sound } from './game/Audio';
 import { GameRenderer } from './render/Renderer';
 import { UI } from './UI';
@@ -10,6 +12,9 @@ import type { Screen } from './UI';
 const canvas = document.querySelector<HTMLCanvasElement>('#world')!;
 const root = document.querySelector<HTMLElement>('#interface')!;
 const sim = new Simulation();
+let campaign = loadCampaign();
+let selectedHunt: HuntIndex = campaign.selected;
+let currentHuntEntry = entryScale(campaign, selectedHunt);
 const sound = new Sound();
 let render: GameRenderer;
 try { render = new GameRenderer(canvas, sim); }
@@ -19,6 +24,12 @@ catch (error) {
   throw error;
 }
 const ui = new UI(root, sound);
+function refreshCampaign() { ui.setCampaign({ unlocked: campaign.unlocked, selected: selectedHunt, completed: [...campaign.completed] }); }
+function selectHunt(index: HuntIndex) {
+  if (index > campaign.unlocked) return;
+  selectedHunt = index; campaign.selected = index; saveCampaign(campaign); refreshCampaign();
+}
+refreshCampaign();
 render.setQuality(ui.settings.quality); sound.setVolume(ui.settings.volume);
 const keys = new Set<string>();
 let leftMouse = false, rightMouse = false, locked = false;
@@ -37,7 +48,7 @@ function takeMouse() {
   } catch { /* Browser/embedded preview can deny pointer lock. */ }
 }
 function demo() {
-  sim.reset(); sim.x = 0; sim.z = -10; sim.state = 'air'; sim.y = ground(0, -10) + 14; sim.vy = 10;
+  sim.reset(); sim.x = 0; sim.z = -10; sim.state = 'air'; sim.y = sim.surface(0, -10) + 14; sim.vy = 10;
   sim.speed = 16; sim.yaw = -.6;
   sim.history = Array.from({ length: 220 }, (_, i) => ({ x: sim.x + i * .08, y: sim.y - Math.pow(i * .08, 2) * .11, z: sim.z + i * .14 }));
   render.reset(sim, true); demoTime = 0;
@@ -47,7 +58,7 @@ function start() {
   void sound.start().catch(() => {}); sound.pause(false); takeMouse();
 }
 function startHunt() {
-  clearOutcome(); clearInput(); sim.startHunt(); render.reset(sim); ui.reset(); ui.show('play');
+  clearOutcome(); clearInput(); currentHuntEntry = entryScale(campaign, selectedHunt); sim.startHunt(selectedHunt, currentHuntEntry); refreshCampaign(); render.reset(sim); ui.reset(); ui.show('play');
   void sound.start().catch(() => {}); sound.pause(false); takeMouse();
 }
 function pause() {
@@ -59,6 +70,9 @@ ui.onSettings = s => { render.setQuality(s.quality); sound.setVolume(s.volume); 
 ui.onAction = action => {
   if (action === 'start') start();
   else if (action === 'hunt') startHunt();
+  else if (action === 'select-hunt-1') selectHunt(1);
+  else if (action === 'select-hunt-2') selectHunt(2);
+  else if (action === 'continue') { clearOutcome(); releaseMouse(); selectHunt(campaign.unlocked); ui.show('expedition'); void sound.start().catch(() => {}); }
   else if (action === 'expedition') { clearOutcome(); releaseMouse(); ui.show('expedition'); void sound.start().catch(() => {}); }
   else if (action === 'resume') resume();
   else if (action === 'finish') {
@@ -66,7 +80,7 @@ ui.onAction = action => {
     if (sim.mode === 'hunt') { sim.abandonHunt(); sim.events.length = 0; ui.report({ ...sim.stats }, { ...sim.hunt }); }
     else ui.report({ ...sim.stats });
   }
-  else if (action === 'title') { clearOutcome(); releaseMouse(); demo(); ui.show('title'); sound.pause(true); }
+  else if (action === 'title') { clearOutcome(); releaseMouse(); selectedHunt = campaign.selected; refreshCampaign(); demo(); ui.show('title'); sound.pause(true); }
   else if (action === 'settings' || action === 'guide') {
     guideOrigin = ui.screen; ui.backScreen = guideOrigin; ui.show(action); releaseMouse();
     if (guideOrigin === 'title' || guideOrigin === 'expedition') void sound.start().catch(() => {});
@@ -138,10 +152,11 @@ function frame(now: number) {
       for (const e of sim.events.splice(0)) {
         render.event(e, sim);
         if (playing) {
-          sound.event(e, sim.chain); ui.event(e, sim);
+          sound.event(e, sim.chain, sim); ui.event(e, sim);
           if (e.type === 'eat') { hitStop = Math.max(hitStop, .035); if (e.power >= 3) slowMotion = Math.max(slowMotion, .35); }
           if (e.type === 'slam') { hitStop = Math.max(hitStop, .055); slowMotion = Math.max(slowMotion, .18); }
           if (e.type === 'grow') { hitStop = Math.max(hitStop, .09); slowMotion = Math.max(slowMotion, 1.05); }
+          if (e.type === 'win') { campaign = recordVictory(campaign, sim.hunt, sim.stats, currentHuntEntry); saveCampaign(campaign); refreshCampaign(); }
           if ((e.type === 'win' || e.type === 'lose') && !pendingReport) {
             pendingReport = { stats: { ...sim.stats }, hunt: { ...sim.hunt } }; resultDelay = e.type === 'win' ? 2.3 : 1.4;
             slowMotion = e.type === 'win' ? 1.8 : .7; sim.clearControlState();
@@ -166,7 +181,7 @@ function frame(now: number) {
 // Inspection is available only on Vite's development server, never in deployed play.
 if (import.meta.env.DEV) {
   Object.assign(window, { __BURROW__: {
-    snapshot: () => ({ screen: ui.screen, mode: sim.mode, hunt: { ...sim.hunt }, markers: sim.markers.map(m => ({ ...m })), digestion: sim.digestion.map(d => ({ ...d })), charge: sim.charge, vy: sim.vy, altitude: sim.y - ground(sim.x, sim.z), state: sim.state, depth: sim.depth, deep: sim.deep, speed: sim.speed, x: sim.x, y: sim.y, z: sim.z, yaw: sim.yaw, cameraYaw: render.yaw,
+    snapshot: () => ({ screen: ui.screen, selectedHunt, campaign: JSON.parse(JSON.stringify(campaign)), inWater: sim.inWater, surfaceY: sim.surface(sim.x, sim.z), mode: sim.mode, hunt: { ...sim.hunt }, markers: sim.markers.map(m => ({ ...m })), digestion: sim.digestion.map(d => ({ ...d })), charge: sim.charge, vy: sim.vy, altitude: sim.y - sim.surface(sim.x, sim.z), state: sim.state, depth: sim.depth, deep: sim.deep, speed: sim.speed, x: sim.x, y: sim.y, z: sim.z, yaw: sim.yaw, cameraYaw: render.yaw,
       stats: { ...sim.stats }, prey: sim.prey.filter(p => p.alive).map(p => ({ ...p, canEat: sim.canEat(p) })), render: { calls: render.renderer.info.render.calls, triangles: render.renderer.info.render.triangles, geometries: render.renderer.info.memory.geometries },
       frames: timings.length ? { count: timings.length, meanMs: timings.reduce((a, b) => a + b) / timings.length, p95Ms: [...timings].sort((a, b) => a - b)[Math.floor(timings.length * .95)] } : null })
   } });

@@ -54,3 +54,7 @@ npm ci; npm run dev; npm test; npm run build; npm run preview. Automated Hunt te
 ## Active continuation: Oasis / Hunt 2
 
 User explicitly requested continuing from90980f8 into Oasis using subagents. Hunt1/toy remain the accepted baseline. DESIGN.md now contains the Hunt2 integration contract; biomes.ts provides immutable shared terrain/water/runway/house data. Root integrates camera/main/campaign persistence; agents own simulation, world, UI, hero/effects/audio and QA. Do not stop at a handoff commit while required Oasis work remains; finish implementation, real-input crossing/plane win, production checks and documentation.
+
+## Oasis implementation milestone
+
+Oasis implementation is integrated and currently frozen for actual-input QA. Strict build and24tests pass (22simulation,2campaign). Includes carried adult growth1.5→2.05→2.65, two-stop unlocked map/continue, versioned between-hunt save, deterministic canals/causeways, forced surface/drag/no charging while wet, human/cart diet, slammable houses, sonar pressure and continuous cargo-plane takeoff/go-around. The plane cannot be swallowed parked or from a ground pass; both plane and worm must be airborne. World/hero/effects/audio/UI owners completed their bounded browser/visual checks. Parent reviewed Oasis overview/street/plane art. The recorded real-input continuity test is running at5174, followed by restored-profile water/loss and production checks. Highest fully accepted hunt remains1until that evidence passes.
