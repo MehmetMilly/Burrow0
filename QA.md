@@ -46,3 +46,31 @@ The first stable video run is in `artifacts/quality-audit/page@a4e41dfe5003d2b32
 Production smoke passed against the isolated final artifact (`artifacts/qa-dist/assets/index-BWI4AxEF.js`), Chrome 156.0.8078.47, 1280×800 low quality. Title → field guide/settings → first bite (HUD clock 0:00) → pause/guide/resume → field report → replay/reset → title all work. The production inspection hook is absent, and no console errors or failed requests were recorded. Report: `artifacts/production-smoke/report.json`; final title/report screenshots are in that directory. These screenshots were visually inspected for clipping, contrast and composition.
 
 The fresh final-build recording has a concise MP4 and twelve-frame contact sheet in `artifacts/quality-audit-review/`.
+
+## Hunt 1 validation
+
+The Hunt 1 scripts use the same real-input rule: telemetry is read only, with no teleports, state mutation, or synthetic simulation steps. Run the full win/loss scenarios and focused warning check sequentially:
+
+```sh
+BURROW_URL=http://127.0.0.1:5174 BURROW_AUDIT_DIR=artifacts/hunt-final-win node scripts/hunt-playtest.mjs
+BURROW_URL=http://127.0.0.1:5174 BURROW_AUDIT_DIR=artifacts/hunt-final-loss BURROW_HUNT_SCENARIO=loss node scripts/hunt-playtest.mjs
+BURROW_URL=http://127.0.0.1:5174 BURROW_AUDIT_DIR=artifacts/hunt-final-warning BURROW_HUNT_SCENARIO=warning node scripts/hunt-playtest.mjs
+```
+
+The final win after corrected shell prediction passed: stage 1 at 15.50 simulation seconds, stage 2 at 26.59 seconds, and the lead balloon eaten by 34.78 seconds. The hunt ended with 22 bites, 32,696 points, a gold medal, full health, and heat 85.94. Food was observed digesting before growth, hunger drained, and hunting raised heat. Win report → Hunt Again resets health/growth/bites → pause/abandon → title all passed, with no browser errors. `artifacts/hunt-final-win/` contains the report and stage/breach/result pictures. The result screenshot was inspected at 800×500 and shows balloon cloth debris behind the readable results.
+
+Deep camping with real `S` + `Space` + `D` input produced a seismic warning at 9.66 seconds, with 1.48 seconds remaining on its 1.8-second telegraph. The first impact at 11.28 seconds reduced health from 100 to 84; repeated impacts caused loss at 49.69 seconds with hunger still 67.66. This was seismic damage rather than starvation. Loss report, clean retry, and return to title passed with no browser errors. Evidence is in `artifacts/hunt-final-loss/`. Damage cause text was visible and clear. Visual review prompted a UI/marker correction; a focused real-input run against that correction passed at `artifacts/hunt-final-warning/`: the orange seismic field is distinct from prey echoes, the visible lesson reads “SEISMIC SWEEP · 1.4 S” and “Release SPACE to surface. Break your circle.” while health remains 100, and the deep-view heading no longer overlaps the objective. The simulation did not change between the full loss and this focused warning check.
+
+The final isolated production artifact is `artifacts/hunt-qa-dist/` (JavaScript `index-D2uElL3S.js`, CSS `index-CXKUOIuU.css`), built with `npm run build -- --outDir artifacts/hunt-qa-dist` and served on port 5176. To repeat the production flows:
+
+```sh
+npx vite preview --outDir artifacts/hunt-qa-dist --port 5176
+BURROW_URL=http://127.0.0.1:5176 BURROW_AUDIT_DIR=artifacts/hunt-final-production node scripts/hunt-production-smoke.mjs
+BURROW_URL=http://127.0.0.1:5176 BURROW_AUDIT_DIR=artifacts/toy-final-production node scripts/production-smoke.mjs
+```
+
+Hunt production smoke passed at 1280×800 low quality: expedition → first bite → valid accessible health/hunger/growth/heat meters → pause/settings/resume → abandoned-hunt report → retry with zero bites → title. The production development hook was absent, and no browser errors or failed requests occurred. The expedition/opening/result pictures in `artifacts/hunt-final-production/` were inspected for layout, contrast and clipping.
+
+Free-roam production smoke also passed against the same artifact: title → guide/settings → play → first bite at HUD 0:00 → pause/guide/resume → outing report → clean replay → title. There was no development hook, browser error, or failed request. Title/report screenshots in `artifacts/toy-final-production/` were visually inspected. The existing free-roam flow remains usable beside Hunt 1.
+
+These are fast scripted routes, not evidence that a typical hunt lasts 3–5 minutes or that the full combat economy remains balanced over repeated human play. They do not establish later hunts, campaign persistence, or 60 fps on target hardware. Final Hunt screenshots use Chrome 156.0.8078.47, SwiftShader, 800×500, low quality. Frame intervals include shared cloud CPU contention and automation; no target-performance claim is made.

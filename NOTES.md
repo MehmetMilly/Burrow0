@@ -2,7 +2,7 @@
 
 ## State
 
-**Rung 1 passed; rung 2 / First Light is implemented and in final verification.** A legitimate real-input win has passed twice, including both growth events, the balloon catch, results, retry and title. Final defeat/production checks are running. Hunts2–5 are not implemented. Do not claim full campaign completion or certified M5 performance.
+**Highest playable scope: rung 2 / First Light (Hunt 1), plus the complete toy.** The hunt has passed legitimate real-input win and loss, both growth events, the balloon catch, results/retry/title, and isolated production checks for both modes. Hunts2–5 are not implemented. Do not claim full campaign completion or certified M5 performance.
 
 Read BRIEF.md for the vision and DESIGN.md for decisions/contracts. DESIGN.md was written and committed before code. The user authorizes autonomous work, regular commits, Vercel deployment with the logged-in account, and up to5subagents (Sol6.1 high/xhigh for critical work).
 
@@ -24,18 +24,21 @@ Read BRIEF.md for the vision and DESIGN.md for decisions/contracts. DESIGN.md wa
 - **14 mechanics tests pass**, plus strict production build. Tests cover launch/run-up,10repeated cycles, slam latch/lunge commitment, paused dive intent, destruction/reset, stable pools, delayed digestion, health/hunger separation, size/apex gate, victory score banking, seismic camping pressure, and shell dodge response.
 - Toy production flow and bounded-resource audit passed previously (QA.md).
 - First Hunt1 win: stages at15.55s/26.54s; balloon at33.60s;22bites/14,058score. This is an efficient scripted route, not evidence of3–5minute human pacing. Root reviewed screenshots and fixed overlapping growth/bite text and balloon debris.
-- Second post-combat-fix win passed (artifacts/hunt-final-win). Final actual-loss and isolated-production Hunt/toy smoke are being run by hunt_validation; collect its findings before marking rung2 complete.
+- Final post-combat-fix win passed at34.78s with22bites/32,696points/gold (artifacts/hunt-final-win). Final seismic loss occurred at49.69s with hunger67.66, proving threat damage rather than starvation (artifacts/hunt-final-loss). Both results/retry/title paths passed.
+- A focused warning capture verifies a distinct orange seismic field, visible countdown/response before any damage, and no deep-label/objective overlap (artifacts/hunt-final-warning).
+- Isolated final production Hunt and toy flows both passed at1280×800 with no dev hook, console errors or failed requests. Build artifact artifacts/hunt-qa-dist has JS index-D2uElL3S.js / CSS index-CXKUOIuU.css. See QA.md for exact evidence.
 - Repro scripts: scripts/hunt-playtest.mjs (BURROW_HUNT_SCENARIO=win|loss), hunt-production-smoke.mjs, existing toy playtest/quality-audit/production-smoke.
 - Dev snapshot is read-only tooling on Vite dev only, exposed as window.__BURROW__.snapshot(). Production excludes it. Bots use real keyboard/mouse input, never teleport or alter game state.
 - Ignored artifacts/ holds screenshots, reports and optional video. npm run playtest defaults to no recording; BURROW_RECORD_VIDEO=1 enables it (npx playwright install ffmpeg).
 
 ## Known limits / next actions
 
-1. Collect final defeat + production results, inspect latest screenshots, update QA.md/README and commit final verification.
-2. Keep source stable while those browser runs execute. Parent owns all integration now; hero/world/UI/physics passes are complete. The read-only review found four issues, all fixed: apex lesson priority, release timing copy, shell prediction, missing hurt explanations.
-3. Target MacBook Air M5 60fps is **not certified**. Cloud has no /dev/dri and runs SwiftShader. Measured software/capture frame intervals are hundreds of milliseconds; they do not establish target GPU performance. Run the README profiling procedure on the M5.
-4. Brief camera/sand crossing seam remains optional polish; independent review judged it readable and not disorienting. No new subsystem should be added before final Hunt1 acceptance.
-5. After Hunt1 is accepted, rung3 begins with Oasis/Hunt2; persistent campaign growth/save and additional biomes are future work.
+1. All current gameplay source is frozen and verified. Final short video is being recorded under artifacts/hunt-final-video; review/condense it with scripts/review-video.mjs and record the result here before handoff.
+2. Target MacBook Air M5 60fps remains **unverified**. Cloud has no /dev/dri and uses SwiftShader. Software/capture frame intervals do not establish target GPU performance. Run the README profiling procedure on the target machine.
+3. Human3–5minute pacing is an estimate. Efficient real-input bots finish in~35simulation seconds. Further human play should judge combat pressure, routing and medal balance; do not misrepresent those bots as a long balance study.
+4. A brief camera/sand crossing seam remains optional polish; independent review judged it readable and not disorienting.
+5. Next ladder rung: Oasis/Hunt2 with water/heat routes and cargo-plane apex. Persistent campaign growth/save, later biomes and later apex set pieces are not implemented. Bring each hunt to the current presentation/flow bar before starting another.
+6. No need to retry the Vercel account block to continue game work; user explicitly prioritized progress over hosting.
 
 ## Hosting — move on unless account access is fixed
 
@@ -45,4 +48,4 @@ Project burrow0, team mehmetmillys-projects, project ID prj_KU2FT0AWBYRZh7sMgxid
 
 ## Commands
 
-npm ci; npm run dev (currently port5174); npm test; npm run build; npm run preview. README documents controls, scope and licenses.
+npm ci; npm run dev; npm test; npm run build; npm run preview. Automated Hunt tests can target port5174 via BURROW_URL. Temporary preview servers should be stopped at handoff. README documents controls, scope and licenses.
