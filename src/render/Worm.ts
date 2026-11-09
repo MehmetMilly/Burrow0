@@ -6,9 +6,11 @@ import type { Simulation } from '../game/Simulation';
 
 const point = new THREE.Vector3(), tangent = new THREE.Vector3(), normal = new THREE.Vector3();
 const transform = new THREE.Matrix4(), local = new THREE.Object3D();
+const featureScale = new THREE.Matrix4(), crestScale = new THREE.Matrix4();
 const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
 const bodyCount = 23, sides = 16;
-type Attachment = { segment: number; local: THREE.Matrix4; jaw?: number };
+const stageTints = [new THREE.Color().setRGB(.82, .94, 1.05), new THREE.Color().setRGB(.98, 1.04, .98), new THREE.Color().setRGB(1.16, 1.05, .77)];
+type Attachment = { segment: number; local: THREE.Matrix4; jaw?: number; stage?: 1 | 2; crest?: boolean };
 type Batch = { mesh: THREE.InstancedMesh; attachments: Attachment[] };
 
 // A cupped, thick carapace. Its narrow leading edge slides under the next plate;
@@ -124,6 +126,12 @@ export class Worm {
   private skinPositions: THREE.BufferAttribute;
   private skinNormals: THREE.BufferAttribute;
   private ghosts: THREE.InstancedMesh;
+  private plateMaterial: THREE.MeshStandardMaterial;
+  private finMaterial: THREE.MeshStandardMaterial;
+  private bulges = new Float32Array(bodyCount);
+  private visualScale = 1;
+  private wasHunt = false;
+  private features = [0, 0];
 
   constructor(scene: THREE.Scene) {
     for (let i = 0; i < bodyCount; i++) {
@@ -132,13 +140,21 @@ export class Worm {
       this.group.add(segment); this.segments.push(segment); this.radii.push(radius);
     }
     const plateMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .61, metalness: .08, side: THREE.DoubleSide });
+    this.plateMaterial = plateMaterial;
+    // These are owned materials: hunt tinting must not recolor shared world art.
+    this.finMaterial = mat(0x29434c, .62, .04).clone();
     const plates = this.batch(carapace(), plateMaterial);
-    const fins = this.batch(sweptFin(), mat(0x29434c, .62, .04));
+    const fins = this.batch(sweptFin(), this.finMaterial);
     const belly = this.batch(geo.sphere, mat(0x9b7c61, .88));
     for (let i = 1; i < bodyCount; i++) {
       this.attach(plates, i);
       this.attach(belly, i, [0, -.61, -.01], [.79, .27, .43]);
-      if (i < bodyCount - 2) this.attach(fins, i, [0, 0, -.04], [1, i < 5 ? 1 : .87, .92]);
+      if (i < bodyCount - 2) this.attach(fins, i, [0, 0, -.04], [1, i < 5 ? 1 : .87, .92]).crest = true;
+    }
+    // Adolescent plates grow into a paired, swept shoulder fan. These share the
+    // existing fin draw and remain completely absent from the free-roam hero.
+    for (let i = 1; i <= 11; i += 2) for (const sign of [-1, 1]) {
+      this.attach(fins, i, [0, 0, -.10], [.8, .83, .98], [0, 0, -sign * .98]).stage = 1;
     }
 
     // One continuous body under the sliding plates keeps tight bends and the
@@ -200,7 +216,12 @@ export class Worm {
       for (const side of [-1, 1]) this.attach(hooks, 0, [side * .23, -.035, .43], [.55, .69, .65], [0, 0, -side * .2], i);
     }
     // The crest grows out of the head armor, swept back with the body ridges.
-    for (const sign of [-1, 1]) this.attach(fins, 0, [sign * .46, -.08, -.28], [.95, .9, 1.1], [0, 0, -sign * .3]);
+    for (const sign of [-1, 1]) this.attach(fins, 0, [sign * .46, -.08, -.28], [.95, .9, 1.1], [0, 0, -sign * .3]).crest = true;
+    // The final stage earns a bone crown along the nape, using the same curved
+    // hook geometry and ivory draw as the teeth rather than another mesh pool.
+    for (const i of [0, 2, 4, 6]) for (const sign of [-1, 1]) {
+      this.attach(hooks, i, [sign * .59, .68, -.20], [1.15, 1.75 - i * .09, 1.8], [Math.PI, 0, sign * .55]).stage = 2;
+    }
     this.finishBatches();
 
     this.ghosts = new THREE.InstancedMesh(geo.sphere, new THREE.MeshBasicMaterial({ color: colors.ink, transparent: true, opacity: .26, depthWrite: false, depthTest: false }), bodyCount);
@@ -215,7 +236,8 @@ export class Worm {
   }
   private attach(batch: Batch, segment: number, position: [number, number, number] = [0, 0, 0], scale: [number, number, number] = [1, 1, 1], rotation: [number, number, number] = [0, 0, 0], jaw?: number) {
     local.position.set(...position); local.scale.set(...scale); local.rotation.set(...rotation); local.updateMatrix();
-    batch.attachments.push({ segment, local: local.matrix.clone(), jaw });
+    const attachment: Attachment = { segment, local: local.matrix.clone(), jaw };
+    batch.attachments.push(attachment); return attachment;
   }
   private finishBatches() {
     for (const batch of this.batches) {
@@ -227,12 +249,45 @@ export class Worm {
   }
 
   update(sim: Simulation, dt: number) {
+    const hunt = sim.mode === 'hunt', stage = hunt ? sim.hunt.stage : 0;
+    const targetScale = hunt ? sim.hunt.scale : 1;
+    if (!hunt || !this.wasHunt) {
+      this.visualScale = targetScale;
+      this.features[0] = hunt && stage >= 1 ? 1 : 0; this.features[1] = hunt && stage >= 2 ? 1 : 0;
+    } else {
+      this.visualScale = damp(this.visualScale, targetScale, 8, dt);
+      this.features[0] = damp(this.features[0], stage >= 1 ? 1 : 0, 6, dt);
+      this.features[1] = damp(this.features[1], stage >= 2 ? 1 : 0, 6, dt);
+    }
+    this.wasHunt = hunt;
+    const scale = this.visualScale, flash = hunt ? sim.hunt.growthFlash : 0;
+    this.plateMaterial.color.setRGB(1, 1, 1);
+    this.finMaterial.color.setHex(0x29434c);
+    const skinMaterial = this.skin.material as THREE.MeshStandardMaterial;
+    skinMaterial.color.setRGB(1, 1, 1);
+    if (hunt) {
+      this.plateMaterial.color.copy(stageTints[stage]); this.finMaterial.color.multiply(stageTints[stage]); skinMaterial.color.copy(stageTints[stage]);
+    }
+    this.plateMaterial.emissive.setRGB(flash * .25, flash * .11, flash * .025);
+    this.finMaterial.emissive.setRGB(flash * .16, flash * .065, flash * .015);
+    // Scale the crest around its buried root so it stays attached as it grows.
+    const crest = hunt ? .68 + stage * .29 + flash * .06 : 1;
+    crestScale.makeScale(1, crest, 1); crestScale.setPosition(0, .82 * (1 - crest), 0);
+    this.bulges.fill(0);
+    if (hunt) for (const meal of sim.digestion) {
+      const edge = Math.min(1, meal.progress * 8, (1 - meal.progress) * 10);
+      const amount = Math.min(.17, .035 + Math.sqrt(Math.max(0, meal.growth)) * .025) * Math.max(0, edge);
+      for (let i = 1; i < bodyCount; i++) {
+        const distance = (i / (bodyCount - 1) - meal.progress) / .075;
+        this.bulges[i] = Math.min(.24, this.bulges[i] + Math.exp(-distance * distance) * amount);
+      }
+    }
     this.open = damp(this.open, Math.max(sim.mouth, sim.state === 'air' ? .62 : .10), 12, dt);
     this.jaws.forEach(j => { j.rotation.x = .04 - this.open * 1.03; j.updateMatrix(); });
     let sample = 0, length = 0;
     const h = sim.history;
     for (let i = 0; i < this.segments.length; i++) {
-      const wanted = i * .63;
+      const wanted = i * .63 * scale;
       while (sample < h.length - 2) {
         const d = Math.hypot(h[sample + 1].x - h[sample].x, h[sample + 1].y - h[sample].y, h[sample + 1].z - h[sample].z);
         if (length + d >= wanted) break;
@@ -241,7 +296,17 @@ export class Worm {
       const a = h[sample], b = h[sample + 1] ?? a;
       const d = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) || 1;
       const t = Math.min(1, Math.max(0, (wanted - length) / d));
-      this.segments[i].position.set(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
+      const g = this.segments[i];
+      g.position.set(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
+      // During a reset or an unusually short trail, extend the last traveled
+      // direction instead of piling every tail plate onto the final sample.
+      if (wanted > length + d) {
+        tangent.set(b.x - a.x, b.y - a.y, b.z - a.z);
+        if (tangent.lengthSq() < .000001) tangent.set(-Math.sin(sim.yaw), 0, Math.cos(sim.yaw));
+        tangent.normalize(); g.position.copy(b).addScaledVector(tangent, wanted - length - d);
+      }
+      const radius = this.radii[i], bulge = this.bulges[i];
+      g.scale.set(radius * scale * (1 + bulge), radius * scale * (1 + bulge * .75), (.86 + radius * .14) * scale);
     }
     for (let i = 0; i < this.segments.length; i++) {
       const g = this.segments[i];
@@ -254,29 +319,34 @@ export class Worm {
       }
       g.updateMatrix();
       const surface = ground(g.position.x, g.position.z), depth = surface - g.position.y;
-      g.visible = depth < 1.65 || sim.deep;
-      if (!sim.deep && depth > .15 && depth < 4) {
+      g.visible = depth < 1.65 * scale || sim.deep;
+      if (!sim.deep && depth > .15 * scale && depth < 4 * scale) {
         local.position.set(g.position.x, surface + .06, g.position.z); local.rotation.set(0, Math.atan2(tangent.x, tangent.z), 0);
-        local.scale.set(this.radii[i] * .92 * (1 - depth * .07), .045, .48); local.updateMatrix(); this.ghosts.setMatrixAt(i, local.matrix);
+        local.scale.set(g.scale.x * .92 * (1 - depth * .07 / scale), .045, .48 * scale); local.updateMatrix(); this.ghosts.setMatrixAt(i, local.matrix);
       } else this.ghosts.setMatrixAt(i, hidden);
     }
     for (const batch of this.batches) {
       batch.attachments.forEach((attachment, index) => {
         const g = this.segments[attachment.segment];
-        if (!g.visible) { batch.mesh.setMatrixAt(index, hidden); return; }
+        const feature = attachment.stage ? this.features[attachment.stage - 1] : 1;
+        if (!g.visible || feature < .001) { batch.mesh.setMatrixAt(index, hidden); return; }
         transform.copy(g.matrix);
+        if (attachment.crest) transform.multiply(crestScale);
         if (attachment.jaw !== undefined) transform.multiply(this.jaws[attachment.jaw].matrix);
-        transform.multiply(attachment.local); batch.mesh.setMatrixAt(index, transform);
+        transform.multiply(attachment.local);
+        if (attachment.stage) { featureScale.makeScale(feature, feature, feature); transform.multiply(featureScale); }
+        batch.mesh.setMatrixAt(index, transform);
       });
       batch.mesh.instanceMatrix.needsUpdate = true;
     }
     this.ghosts.instanceMatrix.needsUpdate = true;
     for (let i = 0; i <= bodyCount; i++) {
-      const g = this.segments[Math.min(i, bodyCount - 1)], radius = i === bodyCount ? .004 : this.radii[i] * .86;
+      const g = this.segments[Math.min(i, bodyCount - 1)], radius = i === bodyCount ? .004 * scale : g.scale.x * .86;
+      const radiusY = i === bodyCount ? .004 * scale : g.scale.y * .86 * .91;
       for (let j = 0; j <= sides; j++) {
         const a = j / sides * Math.PI * 2, index = i * (sides + 1) + j;
         normal.set(Math.sin(a), Math.cos(a), 0).applyQuaternion(g.quaternion);
-        point.set(Math.sin(a) * radius, Math.cos(a) * radius * .91, i === bodyCount ? -.5 : 0).applyQuaternion(g.quaternion).add(g.position);
+        point.set(Math.sin(a) * radius, Math.cos(a) * radiusY, i === bodyCount ? -.5 * scale : 0).applyQuaternion(g.quaternion).add(g.position);
         this.skinPositions.setXYZ(index, point.x, point.y, point.z); this.skinNormals.setXYZ(index, normal.x, normal.y, normal.z);
       }
     }

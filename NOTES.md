@@ -2,62 +2,47 @@
 
 ## State
 
-**Rung 1: playable and visually/behaviorally verified. Rung 2 (Hunt 1) is now in development.** The brief's toy gate is being treated seriously: the complete free-roam flow exists, but final integrated art/camera review and target-machine profiling remain. Do not describe this as the campaign or a finished Steam demo.
+**Rung 1 passed; rung 2 / First Light is implemented and in final verification.** A legitimate real-input win has passed twice, including both growth events, the balloon catch, results, retry and title. Final defeat/production checks are running. Hunts2–5 are not implemented. Do not claim full campaign completion or certified M5 performance.
 
-The repository began with only BRIEF.md. DESIGN.md was written and committed before code. Work stays in this repository. User has explicitly authorized Vercel deployment using the installed, logged-in CLI (`mehmetmilly`), and up to five subagents (GPT-6.1 Sol high/xhigh for critical work). No hosted Sites registration is needed.
+Read BRIEF.md for the vision and DESIGN.md for decisions/contracts. DESIGN.md was written and committed before code. The user authorizes autonomous work, regular commits, Vercel deployment with the logged-in account, and up to5subagents (Sol6.1 high/xhigh for critical work).
 
-## What exists
+## Current game
 
-- Vite, strict TypeScript and Three.js; all runtime assets served locally.
-- Fixed-step camera-led swimming, surge/lurk, depth-and-speed launch, ballistic breach, one air lunge, committed slam, swept automatic eating.
-- Fleeing rabbits/chickens, crunchy crates/pots, slam-flipped edible jeeps, six camps and a bounded dune basin. Prey/props and sand particles use instanced rendering.
-- Procedural dune/sky rendering, rock arch, animated flags, distant balloons, near-surface silhouette/wake, deep tremor echoes and a chase/cinematic camera.
-- Pooled grain, soft dust, physical breakaway chunks, shockwave rings and eight persistent terrain-conforming impact scars.
-- Live title → playground → pause/settings/field guide → outing report → replay/title. Persistent sensitivity/invert/volume/quality. No debug UI in shipped play; inspection hook exists only on the dev server.
-- Original layered Web Audio plus bundled CC0 recorded wind, crunch and stone foley. Recordists/source links/edits are in public/audio/CREDITS.md. Barlow fonts and OFL license bundled.
+- Title → First Light expedition map/card → Hunt1 → win/loss report → retry/title. The original free-roam toy remains under ENTER THE DUNES.
+- Camera-led movement, surge/lurk, depth×speed breach, air lunge, committed slam, swept eating and soft basin boundary. Holding a slam cannot charge a second breach; pausing cancels stored dive intent. Body path retains distance during slow travel.
+- Three growth stages (.7/1.05/1.5 scale), delayed food digestion and visible traveling bulges, separate health/hunger, food-based healing and starvation, heat/hiding, banked chains, scored/time-based medals.
+- Rabbits/chickens, angry goats, militia patrols, armed pickups, attack helicopter, armored flip-to-eat jeeps, breakable camp props, striped lead balloon. All121entity IDs are stable across modes; unused hunt species stay inactive in toy.
+- Shells and anti-camping seismic strikes show terrain-conforming telegraphs and audio warnings. Constant W now crosses the predicted blast; a course change or dive avoids it. Deep local circling is punished, mobile quiet travel lowers heat.
+- Balloon is visible from the opening and edible only at stageIII. A real run-up/dive and a generous air catch ends the hunt. An in-world direction/range cue helps locate it.
+- Continuous plated hero, articulated flower maw/teeth, stage-specific fins/crown, animated enemies/rotors/flags, sculpted dunes, sandstone arch/mesas, shallow wake/silhouette, deep tremor signals.
+- Pooled physical sand/debris, dust, scars, impact rings, tracer lines, flat fluttering balloon fabric scraps. Instanced hero/prey/camps/particles/wind/echoes keep draw calls bounded.
+- Original adaptive pressure/music cues with CC0 recorded wind/crunch/stone layers (public/audio/CREDITS.md). Local fonts/assets; no third-party runtime services.
+- Game UI: persistent settings, keyboard focus, compact desktop support, separate survival/heat/growth instruments, live chain points, contextual damage causes, growth callouts, hunt-specific reports. No debug UI in production.
 
-## Latest verified changes
+## Verification
 
-- Eight mechanics tests pass: speed beats stationary depth; ten complete dive/breach/slam cycles; destruction; reset; held slam cannot prime a second breach; lunge cannot reverse a slam; pausing a charged dive/ascent defuses launch intent.
-- Parent integration calls `clearControlState()` on pause and ignores repeated Escape keydown.
-- Earlier complete Chrome run passed title/guide → first bite → deep view → running breach + lunge (~25.5 m) → slam → mouse/keyboard steering → pause/persistent settings → report → replay/reset → title.
-- A separate real-input camp route broke five props and flipped a jeep. That run exposed the held-slam second-breach bug, now covered and fixed.
-- Production builds pass. Final integrated browser checks must be rerun after current parallel art work settles.
+- **14 mechanics tests pass**, plus strict production build. Tests cover launch/run-up,10repeated cycles, slam latch/lunge commitment, paused dive intent, destruction/reset, stable pools, delayed digestion, health/hunger separation, size/apex gate, victory score banking, seismic camping pressure, and shell dodge response.
+- Toy production flow and bounded-resource audit passed previously (QA.md).
+- First Hunt1 win: stages at15.55s/26.54s; balloon at33.60s;22bites/14,058score. This is an efficient scripted route, not evidence of3–5minute human pacing. Root reviewed screenshots and fixed overlapping growth/bite text and balloon debris.
+- Second post-combat-fix win passed (artifacts/hunt-final-win). Final actual-loss and isolated-production Hunt/toy smoke are being run by hunt_validation; collect its findings before marking rung2 complete.
+- Repro scripts: scripts/hunt-playtest.mjs (BURROW_HUNT_SCENARIO=win|loss), hunt-production-smoke.mjs, existing toy playtest/quality-audit/production-smoke.
+- Dev snapshot is read-only tooling on Vite dev only, exposed as window.__BURROW__.snapshot(). Production excludes it. Bots use real keyboard/mouse input, never teleport or alter game state.
+- Ignored artifacts/ holds screenshots, reports and optional video. npm run playtest defaults to no recording; BURROW_RECORD_VIDEO=1 enables it (npx playwright install ffmpeg).
 
-## Active parallel polish (user-authorized)
+## Known limits / next actions
 
-- Hero agent: src/render/Worm.ts, continuous armored body/maw and draw batching.
-- World agent: src/render/World.ts, dune lighting, denser central terrain with lower overall geometry, batched tremor view.
-- UI agent: src/UI.ts and src/style.css, readability, feedback, focus, compact layouts.
-- QA agent: scripts/* and QA.md, independent browser/endurance/production checks and compact video review.
-- Physics agent: finished Simulation.ts/tests; parent owns main.ts, Renderer.ts, Effects.ts, Audio.ts and integration.
+1. Collect final defeat + production results, inspect latest screenshots, update QA.md/README and commit final verification.
+2. Keep source stable while those browser runs execute. Parent owns all integration now; hero/world/UI/physics passes are complete. The read-only review found four issues, all fixed: apex lesson priority, release timing copy, shell prediction, missing hurt explanations.
+3. Target MacBook Air M5 60fps is **not certified**. Cloud has no /dev/dri and runs SwiftShader. Measured software/capture frame intervals are hundreds of milliseconds; they do not establish target GPU performance. Run the README profiling procedure on the M5.
+4. Brief camera/sand crossing seam remains optional polish; independent review judged it readable and not disorienting. No new subsystem should be added before final Hunt1 acceptance.
+5. After Hunt1 is accepted, rung3 begins with Oasis/Hunt2; persistent campaign growth/save and additional biomes are future work.
 
-## Browser evidence / performance limits
+## Hosting — move on unless account access is fixed
 
-Screenshots, WebM, telemetry and video review live under ignored `artifacts/`. Repro scripts are committed under scripts/. `npm run playtest` uses real input; optional video is enabled with `BURROW_RECORD_VIDEO=1` (requires `npx playwright install ffmpeg`). Also see camp-playtest, quality-audit, production-smoke and review-video scripts.
+User explicitly said not to stall on Vercel team access and to continue other game work. The first deployment is **blocked/not live** by TEAM_ACCESS_REQUIRED: Vercel cannot verify the existing Git commit author against the Hobby team. Build itself passed. CLI polling was stopped after confirming terminal BLOCKED. Source is on GitHub; missing source is not the issue. Do not strip metadata or impersonate another author.
 
-Cloud has **no /dev/dri**; Chrome uses SwiftShader. Observed software frame times are hundreds of milliseconds, vary with capture/CPU load, and **do not establish M5 performance**. The target MacBook Air M5 at 60 fps still needs direct profiling. Particle, prey and tremor batching and terrain reduction address real draw/geometry costs. Renderer memory is lazily uploaded as new views appear; bounded-memory checks must compare warmed scenes rather than first-frame geometry counts.
+Project burrow0, team mehmetmillys-projects, project ID prj_KU2FT0AWBYRZh7sMgxidnRqPuOwI. Blocked deployment dpl_5GtKLcUY23Q2Bbh37bYJq9hfbS4N. Link is locally ignored under .vercel/. vercel.json/.vercelignore are committed. Resume hosting only after a legitimate account/Git provider link fix; do not report the blocked URL as a playable game.
 
-Visual review has already fixed washed-out sand, horizon clutter, bright sky leaking underground, tail gaps, poor title framing, hidden shallow silhouette and HUD contrast. Latest integrated hero/world/UI captures are still pending.
+## Commands
 
-## Immediate next actions
-
-1. Collect parallel art/UI work; inspect integrated title, surface, deep view, breach and camp impact screenshots.
-2. Run eight mechanics tests, production build, final real-input flow/camp checks, a bounded endurance audit and production smoke (including absence of dev hook).
-3. Review compact video/contact sheet; fix observed game feel/camera defects before considering rung 2.
-4. Commit the finished toy, deploy on Vercel, verify the deployed production flow, and record the literal deployment URL/project here and in README.
-5. Decide the rung-1 acceptance gate honestly. Only then begin Hunt 1's health/hunger/growth/heat/balloon set piece. Preserve the toy as a complete playable scope if stopping here.
-
-## Run
-
-`npm ci`, then `npm run dev`. `npm test` and `npm run build` are required checks. README.md documents controls, scope, quality settings and asset licenses.
-
-## Latest steering / hosting
-
-User asked to continue game work rather than stall on Vercel. The first deployment was blocked by Vercel `TEAM_ACCESS_REQUIRED`: it cannot verify the existing Git commit author against the Hobby team. Build output itself passed, but the deployment is **not live**. CLI polling was stopped after detecting the terminal BLOCKED state. Do not claim a playable hosted URL.
-
-Project: burrow0, team mehmetmillys-projects, project ID prj_KU2FT0AWBYRZh7sMgxidnRqPuOwI. Blocked deployment dpl_5GtKLcUY23Q2Bbh37bYJq9hfbS4N. Source commits are already present on GitHub (verified main HEAD8555fc2 at the time of the check). User's Vercel/GitHub account link, not missing source, is the unresolved permission issue. Do not strip metadata or impersonate another author to bypass it.
-
-The final toy passes 8 mechanics tests, the full production flow and a stable real-input audit (3 breach/slam cycles, 15seconds roaming, settings, held-input pause, 4 resets and persistence). Resource counts plateaued at63 geometries and ~8.5MB JS heap. Independent art review passed; a brief camera/sand crossing seam remains optional polish.
-
-Hunt 1 contract is appended to DESIGN.md. Preserve the toy. Parent integrates main/camera/audio/effects; agents own simulation, World, Worm, UI and QA respectively. Highest completed playable scope remains rung1 until a real-input Hunt1 win and full results flow pass.
+npm ci; npm run dev (currently port5174); npm test; npm run build; npm run preview. README documents controls, scope and licenses.

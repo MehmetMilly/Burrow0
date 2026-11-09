@@ -102,3 +102,11 @@ Shared simulation contract for the slice:
 - Main flow: title → expedition card → Hunt 1 → win/loss report → replay/title. Free-roam title action continues to use toy reset. No inaccessible future hunts are advertised.
 
 The slice must be played to a legitimate win with real input. Every subsystem is held to the toy's presentation bar before advancing to later hunts.
+
+## First Light playtest refinements
+
+The implemented hunt preserves a fast route for skilled play rather than imposing a timer gate. Food, turn lag, anger/heat and a deliberate aerial catch supply the challenge. The first goal-driven input bot completed it in about34simulation seconds; human3–5minute pacing remains an estimate, not a measured claim.
+
+Review found that short shell prediction made straight surging a guaranteed dodge. Aimed blasts now predict90%of their visible telegraph duration; a behavior test verifies straight travel is hit and a deliberate course change clears the blast. The18second opening grace remains. Damage labels explain goats, seismic strikes and starvation through contextual prompts. An apex-ready airborne worm receives the catch lesson before heat advice, and release copy correctly asks for release before reaching the balloon.
+
+Growth title cards suppress ordinary bite labels while visible. Chain points are readable before banking. The apex uses an in-world bearing/range cue, and its destruction sheds ivory/rust fabric and basket chunks instead of rock-like spherical debris. Victory/loss statistics are captured at the actual outcome, before the brief slow-motion aftermath.

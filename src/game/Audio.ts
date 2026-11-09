@@ -6,6 +6,7 @@ import type { Event, Simulation } from './Simulation';
 export class Sound {
   context?: AudioContext;
   master?: GainNode; wind?: GainNode; rumble?: GainNode; filter?: BiquadFilterNode;
+  private music?: GainNode; private rhythm = 0; private heartbeat = 0; private markerPhases = new Map<number, number>();
   private recordings = new Map<string, AudioBuffer>();
   private recordingsLoading?: Promise<void>; private lastDebris = -1;
   private noise?: AudioBuffer; private volume = .65; private active = false;
@@ -24,6 +25,13 @@ export class Sound {
       source.connect(this.filter); this.filter.connect(wind); wind.connect(master); source.start();
       const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = 39;
       const rumble = this.rumble = ctx.createGain(); rumble.gain.value = 0; osc.connect(rumble); rumble.connect(master); osc.start();
+      const music = this.music = ctx.createGain(); music.gain.value = 0;
+      const velvet = ctx.createBiquadFilter(); velvet.type = 'lowpass'; velvet.frequency.value = 320;
+      music.connect(velvet); velvet.connect(master);
+      for (const [i, frequency] of [73.416, 87.307, 110].entries()) {
+        const voice = ctx.createOscillator(), level = ctx.createGain(); voice.type = 'triangle'; voice.frequency.value = frequency;
+        voice.detune.value = (i - 1) * 5; level.gain.value = .2; voice.connect(level); level.connect(music); voice.start();
+      }
     }
     await this.context.resume(); this.active = true;
     this.recordingsLoading ??= this.loadRecordings(this.context);
@@ -60,6 +68,27 @@ export class Sound {
     this.wind.gain.value = damp(this.wind.gain.value, wind, 3, dt);
     this.rumble.gain.value = damp(this.rumble.gain.value, this.active && sim.state !== 'air' ? .07 + sim.speed * .002 : .015, 4, dt);
     this.filter.frequency.setTargetAtTime(sim.deep ? 220 : sim.state === 'air' ? 3000 : 1000, now, .2);
+    const hunting = this.active && sim.mode === 'hunt' && sim.hunt.status === 'active';
+    if (this.music) this.music.gain.setTargetAtTime(hunting ? .045 + sim.hunt.heat * .0005 : .006, now, .7);
+    this.rhythm -= dt; this.heartbeat -= dt;
+    if (hunting && sim.hunt.heat > 28 && this.rhythm <= 0) {
+      this.rhythm = 1.2 - sim.hunt.heat * .006;
+      this.tone(64, 37, .16, .055 + sim.hunt.heat * .0006); this.grit(.06, .025, 550, 1900, .16);
+    }
+    if (hunting && (sim.hunt.health < 30 || sim.hunt.hunger < 15) && this.heartbeat <= 0) {
+      this.heartbeat = .83; this.tone(57, 38, .16, .12); this.tone(64, 43, .12, .075, 'sine', .19);
+    }
+    const live = new Set<number>();
+    if (hunting) for (const marker of sim.markers) {
+      live.add(marker.id);
+      if (Math.hypot(marker.x - sim.x, marker.z - sim.z) > marker.radius + 20) continue;
+      const phase = marker.time < .45 ? 2 : 1;
+      if ((this.markerPhases.get(marker.id) ?? 0) < phase) {
+        this.markerPhases.set(marker.id, phase);
+        this.tone(marker.kind === 'seismic' ? 420 : 1250, marker.kind === 'seismic' ? 310 : 640, .16, phase === 2 ? .13 : .08, 'triangle');
+      }
+    }
+    for (const id of this.markerPhases.keys()) if (!live.has(id)) this.markerPhases.delete(id);
   }
   private tone(from: number, to: number, duration: number, gain: number, type: OscillatorType = 'sine', delay = 0) {
     const ctx = this.context; if (!ctx || !this.master || gain <= 0) return;
@@ -91,6 +120,17 @@ export class Sound {
       this.lastDebris = this.context.currentTime;
       this.sample('rock-fall', .45, 1.2, 6500); this.grit(.35, .3, 800, 6200); this.tone(130, 60, .22, .2, 'triangle');
     } else if (e.type === 'lunge') { this.grit(.27, .33, 500, 3000); this.tone(100, 55, .23, .19); }
+    else if (e.type === 'shot') { this.grit(.1, .3, 900, 6800); this.tone(150, 58, .12, .12); }
+    else if (e.type === 'hurt') { this.grit(.24, .38, 350, 1400); this.tone(125, 40, .34, .35); }
+    else if (e.type === 'grow') {
+      this.grit(.9, .55, 220, 1700); this.tone(52, 83, .85, .45, 'triangle');
+      [293.66, 349.23, 440, 587.33].forEach((note, i) => this.tone(note, note, .7, .085, 'triangle', i * .1));
+    } else if (e.type === 'win') {
+      this.sample('rock-fall', .8, .6, 5000); this.tone(95, 28, 1.2, .65);
+      [293.66, 349.23, 440, 587.33, 880].forEach((note, i) => this.tone(note, note, .9, .12, 'triangle', i * .13));
+    } else if (e.type === 'lose') {
+      [220, 174.61, 146.83].forEach((note, i) => this.tone(note, note * .97, .8, .1, 'triangle', i * .22));
+    }
   }
   tick() { this.tone(440, 320, .07, .045, 'triangle'); }
 }

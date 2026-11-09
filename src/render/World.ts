@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { colors, geo, mat, mesh } from './palette';
 import { ground, random, damp } from '../game/math';
-import type { Simulation, PreyKind } from '../game/Simulation';
+import type { Simulation, Prey, PreyKind } from '../game/Simulation';
+
+type Motion = 'goatLeg' | 'personLeg' | 'personArm' | 'turret' | 'barrel' | 'rotor' | 'tailRotor' | 'pennant' | 'flame';
+type AnimatedPart = { motion?: Motion; pivot?: [number, number, number]; phase?: number };
 
 // Bake a procedural sculpture into one draw per material; every animal shares it.
 function bake(source: THREE.Group) {
@@ -21,6 +24,7 @@ function bake(source: THREE.Group) {
   return out;
 }
 function preyModel(kind: PreyKind) {
+  if (!['rabbit', 'chicken', 'crate', 'urn', 'jeep'].includes(kind)) return huntModel(kind);
   const g = new THREE.Group();
   if (kind === 'rabbit' || kind === 'chicken') {
     const chicken = kind === 'chicken', c = chicken ? colors.ivory : 0xcba486;
@@ -65,6 +69,175 @@ function preyModel(kind: PreyKind) {
   }
   return bake(g);
 }
+function spar(parent: THREE.Group, color: number, a: [number, number, number], b: [number, number, number], radius = .045) {
+  const start = new THREE.Vector3(...a), end = new THREE.Vector3(...b), delta = end.clone().sub(start);
+  const part = new THREE.Mesh(geo.cylinder, mat(color)); part.position.copy(start.add(end).multiplyScalar(.5));
+  part.scale.set(radius, delta.length(), radius); part.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize()); parent.add(part);
+}
+function animated(out: THREE.Group, source: THREE.Group, motion: Motion, pivot: [number, number, number], phase = 0) {
+  const sculpture = bake(source);
+  for (const part of sculpture.children as THREE.Mesh[]) {
+    part.geometry.translate(-pivot[0], -pivot[1], -pivot[2]);
+    part.userData = { motion, pivot, phase }; out.add(part);
+  }
+}
+function curvedHorn(side: number) {
+  const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(side * .2, 2.05, -.62), new THREE.Vector3(side * .34, 2.42, -.46), new THREE.Vector3(side * .4, 2.56, -.1), new THREE.Vector3(side * .39, 2.43, .05)]);
+  const geometry = new THREE.TubeGeometry(curve, 10, .105, 6, false), attr = geometry.attributes.position;
+  for (let i = 0; i < attr.count; i++) {
+    const t = Math.floor(i / 7) / 10, center = curve.getPointAt(t), taper = 1 - t * .92;
+    attr.setXYZ(i, center.x + (attr.getX(i) - center.x) * taper, center.y + (attr.getY(i) - center.y) * taper, center.z + (attr.getZ(i) - center.z) * taper);
+  }
+  geometry.computeVertexNormals(); return geometry;
+}
+function balloonEnvelope() {
+  const profile = [[.65, 4.4], [1.05, 5.1], [2.4, 6.3], [3.7, 8.1], [4.4, 10.3], [4.3, 12.4], [3.5, 14.2], [2.25, 15.4], [.8, 16.1], [0, 16.25]].map(([x, y]) => new THREE.Vector2(x, y));
+  const geometry = new THREE.LatheGeometry(profile, 48).toNonIndexed(), position = geometry.attributes.position;
+  const color = new THREE.Color(), vertexColors: number[] = [];
+  for (let i = 0; i < position.count; i += 3) {
+    const x = (position.getX(i) + position.getX(i + 1) + position.getX(i + 2)) / 3, z = (position.getZ(i) + position.getZ(i + 1) + position.getZ(i + 2)) / 3;
+    const y = (position.getY(i) + position.getY(i + 1) + position.getY(i + 2)) / 3;
+    const panel = Math.floor((Math.atan2(x, z) + Math.PI) / (Math.PI / 6));
+    color.setHex(y < 5.5 || y > 15.5 ? colors.ink : panel % 2 ? colors.ivory : colors.rust);
+    for (let n = 0; n < 3; n++) vertexColors.push(color.r, color.g, color.b);
+  }
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(vertexColors, 3)); return geometry;
+}
+function huntModel(kind: PreyKind) {
+  const body = new THREE.Group(), moving: { group: THREE.Group; motion: Motion; pivot: [number, number, number]; phase?: number }[] = [];
+  const limb = (motion: Motion, pivot: [number, number, number], phase = 0) => {
+    const group = new THREE.Group(); moving.push({ group, motion, pivot, phase }); return group;
+  };
+  if (kind === 'goat') {
+    mesh(body, geo.sphere, 0xa87d57, [0, 1.15, .1], [.56, .62, .87]);
+    mesh(body, geo.sphere, colors.ivory, [0, 1.2, -.4], [.48, .55, .45]);
+    mesh(body, geo.sphere, 0xa87d57, [0, 1.77, -.66], [.31, .42, .37]);
+    mesh(body, geo.sphere, 0x6b5140, [0, 1.59, -.97], [.3, .21, .28]);
+    mesh(body, geo.cone, colors.dark, [0, 1.24, -.87], [.13, .5, .15], [Math.PI, 0, 0]);
+    mesh(body, geo.sphere, colors.ivory, [0, 1.62, .83], [.15, .32, .18], [-.6, 0, 0]);
+    for (const s of [-1, 1]) {
+      mesh(body, geo.sphere, colors.ivory, [s * .4, 1.84, -.56], [.32, .09, .15], [0, 0, s * .3]);
+      mesh(body, geo.sphere, colors.dark, [s * .29, 1.88, -.84], [.055, .075, .07]);
+      const horn = new THREE.Mesh(curvedHorn(s), mat(colors.ivory)); body.add(horn);
+      for (const z of [-.48, .59]) {
+        const leg = limb('goatLeg', [s * .36, 1.02, z], s * (z > 0 ? 1 : -1));
+        mesh(leg, geo.cylinder, 0x8c694d, [s * .36, .58, z], [.12, .86, .12]);
+        mesh(leg, geo.box, colors.dark, [s * .36, .13, z - .04], [.26, .23, .34]);
+      }
+    }
+  } else if (kind === 'militia') {
+    mesh(body, geo.box, colors.olive, [0, 1.25, 0], [.69, .76, .42]);
+    mesh(body, geo.box, 0x8b8b67, [0, 1.05, -.23], [.75, .17, .09]);
+    mesh(body, geo.sphere, 0xd5a47b, [0, 1.91, -.03], [.28, .33, .27]);
+    mesh(body, geo.sphere, 0xd5a47b, [0, 1.9, -.3], [.1, .11, .14]);
+    mesh(body, geo.sphere, colors.olive, [0, 2.11, 0], [.34, .21, .33]);
+    mesh(body, geo.box, 0x465d55, [0, 2.04, -.27], [.66, .09, .2]);
+    mesh(body, geo.box, colors.rust, [0, 1.66, 0], [.48, .12, .44]);
+    mesh(body, geo.box, colors.rust, [.22, 1.48, .26], [.18, .45, .05], [0, 0, -.25]);
+    for (const s of [-1, 1]) {
+      mesh(body, geo.sphere, colors.dark, [s * .11, 1.98, -.27], [.045, .05, .03]);
+      const leg = limb('personLeg', [s * .2, .92, 0], s);
+      mesh(leg, geo.box, 0xbbb18c, [s * .2, .53, 0], [.26, .8, .3]);
+      mesh(leg, geo.box, colors.dark, [s * .2, .13, -.09], [.31, .24, .48]);
+      const arm = limb('personArm', [s * .42, 1.51, 0], s);
+      mesh(arm, geo.cylinder, colors.olive, [s * .46, 1.16, 0], [.13, .67, .13], [0, 0, s * .1]);
+      mesh(arm, geo.sphere, 0xd5a47b, [s * .49, .83, 0], [.14, .15, .13]);
+      if (s === 1) {
+        mesh(arm, geo.box, colors.dark, [.54, 1.12, -.16], [.13, .14, .85], [-.12, 0, 0]);
+        mesh(arm, geo.box, 0x8b6746, [.54, 1.1, .2], [.15, .21, .36]);
+      }
+    }
+  } else if (kind === 'pickup') {
+    mesh(body, geo.box, colors.dark, [0, .65, .1], [2.3, .4, 4.9]);
+    mesh(body, geo.box, colors.olive, [0, 1.14, 0], [2.3, .72, 4.9]);
+    mesh(body, geo.box, 0x7c8668, [0, 1.64, -1.3], [2.3, .37, 2.2]);
+    mesh(body, geo.box, colors.dark, [0, 1.54, 1.32], [1.82, .12, 1.9]);
+    mesh(body, geo.box, 0x7c8668, [0, 2.03, -.25], [2.05, 1.08, 1.55]);
+    mesh(body, geo.box, 0x95b3ae, [0, 2.1, -1.04], [1.75, .68, .08], [-.12, 0, 0]);
+    mesh(body, geo.box, colors.ivory, [0, 2.65, -.25], [2.18, .15, 1.72]);
+    mesh(body, geo.box, 0x314842, [0, 1.2, -2.5], [1.45, .46, .07]);
+    mesh(body, geo.box, colors.ivory, [0, .83, -2.6], [2.65, .23, .25]);
+    for (const s of [-1, 1]) {
+      mesh(body, geo.box, 0xa5a27a, [s * 1.15, 1.7, 1.45], [.19, .53, 2.1]);
+      mesh(body, geo.sphere, colors.ivory, [s * .88, 1.4, -2.48], [.28, .2, .08]);
+      mesh(body, geo.box, colors.coral, [s * .83, 1.3, 2.49], [.28, .18, .06]);
+      mesh(body, geo.box, colors.dark, [s * 1.08, 1.15, -1.55], [.4, .5, 1.3]);
+      mesh(body, geo.box, colors.dark, [s * 1.08, 1.15, 1.6], [.4, .5, 1.3]);
+      for (const z of [-1.55, 1.6]) {
+        mesh(body, geo.cylinder, colors.dark, [s * 1.19, .61, z], [.62, .39, .62], [0, 0, Math.PI / 2]);
+        mesh(body, geo.cylinder, 0xa5a27a, [s * 1.4, .61, z], [.3, .06, .3], [0, 0, Math.PI / 2]);
+      }
+      spar(body, colors.dark, [s * .8, 1.6, .65], [s * .8, 2.85, .8], .065);
+    }
+    spar(body, colors.dark, [-.8, 2.85, .8], [.8, 2.85, .8], .065);
+    const turret = limb('turret', [0, 1.7, 1.18]);
+    mesh(turret, geo.cylinder, colors.dark, [0, 2.01, 1.18], [.13, .65, .13]);
+    mesh(turret, geo.box, colors.olive, [0, 2.4, 1.18], [.72, .55, .8]);
+    mesh(turret, geo.box, 0x9c9d75, [.47, 2.38, 1.22], [.22, .42, .5]);
+    const barrel = limb('barrel', [0, 1.7, 1.18]);
+    mesh(barrel, geo.cylinder, colors.dark, [0, 2.48, .23], [.1, 1.45, .1], [Math.PI / 2, 0, 0]);
+    mesh(barrel, geo.cylinder, 0x717e72, [0, 2.48, -.49], [.14, .23, .14], [Math.PI / 2, 0, 0]);
+  } else if (kind === 'helicopter') {
+    mesh(body, geo.sphere, colors.olive, [0, .45, 0], [1.35, 1.36, 2.35]);
+    mesh(body, geo.sphere, 0x83a7a9, [0, .64, -1.2], [1.25, 1.06, 1.32]);
+    mesh(body, geo.box, colors.olive, [0, .7, -1.98], [.13, 1.62, .2], [-.4, 0, 0]);
+    mesh(body, geo.box, colors.olive, [0, -.18, -2.05], [2.05, .17, .29]);
+    mesh(body, geo.sphere, colors.dark, [0, 1.6, .3], [.85, .43, 1.55]);
+    for (const s of [-1, 1]) {
+      mesh(body, geo.cylinder, 0x4c5d51, [s * .67, 1.57, .8], [.3, 1.38, .3], [Math.PI / 2, 0, 0]);
+      mesh(body, geo.box, colors.ivory, [s * 1.24, .45, .4], [.08, .35, .8]);
+      mesh(body, geo.cylinder, colors.dark, [s * 1.35, -.98, .12], [.095, 3.75, .095], [Math.PI / 2, 0, 0]);
+      for (const z of [-.95, 1]) spar(body, colors.dark, [s * .85, -.34, z], [s * 1.35, -.98, z], .075);
+      mesh(body, geo.box, colors.olive, [s * 1.6, -.2, .15], [.85, .27, 1.7]);
+      for (const x of [s * 1.4, s * 1.78]) mesh(body, geo.cylinder, colors.dark, [x, -.24, -.1], [.16, 1.7, .16], [Math.PI / 2, 0, 0]);
+    }
+    spar(body, colors.olive, [0, .55, 1.6], [0, 1.2, 6.2], .3);
+    mesh(body, geo.box, colors.olive, [0, 1.8, 5.8], [.12, 2.1, 1.1], [.35, 0, 0]);
+    mesh(body, geo.box, colors.ivory, [0, 1.15, 4.9], [2.35, .14, .7]);
+    mesh(body, geo.cylinder, colors.dark, [0, 2.02, .2], [.12, 1, .12]);
+    const rotor = limb('rotor', [0, 2.48, .2]);
+    mesh(rotor, geo.sphere, 0x738176, [0, 2.48, .2], [.35, .19, .35]);
+    for (let i = 0; i < 3; i++) {
+      const a = i * Math.PI * 2 / 3;
+      mesh(rotor, geo.box, colors.dark, [Math.sin(a) * 2.45, 2.48, .2 + Math.cos(a) * 2.45], [.29, .065, 4.6], [0, a, 0]);
+      mesh(rotor, geo.box, colors.ivory, [Math.sin(a) * 4.55, 2.48, .2 + Math.cos(a) * 4.55], [.31, .07, .4], [0, a, 0]);
+    }
+    const tail = limb('tailRotor', [.35, 1.52, 6.06]);
+    for (const a of [0, Math.PI / 2]) mesh(tail, geo.box, colors.dark, [.35, 1.52, 6.06], [.07, 1.75, .15], [a, 0, 0]);
+    mesh(body, geo.sphere, colors.coral, [0, 2.9, 5.65], [.14, .15, .14]);
+  } else if (kind === 'balloon') {
+    const envelope = new THREE.Mesh(balloonEnvelope(), new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .95 })); body.add(envelope);
+    mesh(body, geo.box, 0x7f573c, [0, 0, 0], [3.3, 1.7, 2.7]);
+    mesh(body, geo.box, colors.dark, [0, .88, 0], [3.4, .2, 2.8]);
+    for (let i = 0; i < 5; i++) {
+      mesh(body, geo.box, 0xc79863, [0, -.65 + i * .3, -1.38], [3.36, .08, .05]);
+      mesh(body, geo.box, 0xc79863, [0, -.65 + i * .3, 1.38], [3.36, .08, .05]);
+      mesh(body, geo.box, 0xc79863, [-1.68, -.65 + i * .3, 0], [.05, .08, 2.75]);
+      mesh(body, geo.box, 0xc79863, [1.68, -.65 + i * .3, 0], [.05, .08, 2.75]);
+    }
+    for (const x of [-1.35, 1.35]) for (const z of [-1.05, 1.05]) {
+      spar(body, colors.ink, [x, .75, z], [x * .56, 4.8, z * .56], .05);
+      spar(body, colors.ivory, [x * .56, 4.8, z * .56], [x * 2.15, 8.2, z * 2.15], .025);
+    }
+    mesh(body, geo.cylinder, colors.dark, [0, 2.2, 0], [.48, .4, .48]);
+    const flame = limb('flame', [0, 2.5, 0]);
+    const flameMesh = new THREE.Mesh(geo.cone, new THREE.MeshBasicMaterial({ color: 0xffc06b }));
+    flameMesh.position.set(0, 3.12, 0); flameMesh.scale.set(.27, 1.2, .27); flame.add(flameMesh);
+    for (const s of [-1, 1]) {
+      const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128;
+      const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#f6dfb3'; ctx.beginPath(); ctx.arc(64, 64, 59, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#a84e34'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(64, 64, 52, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#243e47'; ctx.font = 'bold 65px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('01', 64, 66);
+      const material = new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, roughness: 1 });
+      material.map!.colorSpace = THREE.SRGBColorSpace;
+      const badge = new THREE.Mesh(new THREE.PlaneGeometry(3.25, 3.25), material); badge.position.set(0, 10.6, s * 4.42); badge.rotation.y = s === 1 ? 0 : Math.PI; body.add(badge);
+    }
+    const pennant = limb('pennant', [1.75, .6, 0]);
+    mesh(pennant, new THREE.ConeGeometry(.6, 2.8, 3), colors.coral, [2.85, .6, 0], [1, 1, .04], [0, 0, -Math.PI / 2]);
+  }
+  const out = bake(body);
+  moving.forEach(part => animated(out, part.group, part.motion, part.pivot, part.phase)); return out;
+}
 function sandstoneGeometry() {
   const geometry = new THREE.CylinderGeometry(.58, 1, 1, 10, 5);
   const positions = geometry.attributes.position;
@@ -83,7 +256,7 @@ function sandstoneGeometry() {
   return geometry;
 }
 const terrainVertex = `
-  uniform vec3 trail[12]; uniform float time; uniform float underground;
+  uniform vec3 trail[12]; uniform float time; uniform float underground; uniform float wormScale;
   varying vec3 vWorld; varying vec3 vNormal; varying float vEye; varying float vWake;
   void main() {
     vec3 p = position;
@@ -95,9 +268,10 @@ const terrainVertex = `
       float distance2=dot(delta,delta);
       if(distance2<nearest) { nearest=distance2; strength=mix(trail[i].y,trail[i+1].y,t); wakeDelta=delta; }
     }
-    vWake=exp(-nearest*.18)*strength;
-    p.y += vWake*.85;
-    vec2 wakeSlope=-wakeDelta*vWake*.306;
+    float width=max(.75,wormScale);
+    vWake=exp(-nearest*.18/(width*width))*strength;
+    p.y += vWake*.85*width;
+    vec2 wakeSlope=-wakeDelta*vWake*.306/width;
     vWorld=(modelMatrix*vec4(p,1.)).xyz;
     vNormal=normalize(mat3(modelMatrix)*(normal-vec3(wakeSlope.x,0.,wakeSlope.y)));
     vec4 mv=modelViewMatrix*vec4(p,1.); vEye=-mv.z;
@@ -159,14 +333,16 @@ const echoFragment = `
   uniform float time; uniform float opacity; varying vec2 vUv; varying vec3 vSignal; varying float vCore;
   void main(){
     vec2 p=(vUv-.5)*2.; float radius=length(p); float aa=max(fwidth(radius),.008);
-    float phase=fract(time*.55+vSignal.x);
+    float phase=fract(time*(vSignal.y>.75?.85:.55)+vSignal.x);
     float pulseRadius=.25+phase*.68;
     float pulse=(1.-smoothstep(.022,.022+aa,abs(radius-pulseRadius)))*(1.-phase*.65)*.95;
     float halo=(1.-smoothstep(.01,.01+aa,abs(radius-.3)))*.4;
     float core=exp(-dot(p,p)*75.);
-    float alpha=mix(pulse+halo+core,.8,vCore)*vSignal.z*opacity;
+    float tooLarge=step(.25,vSignal.y)*(1.-step(.75,vSignal.y));
+    float dash=mix(1.,smoothstep(-.2,.2,sin(atan(p.y,p.x)*10.)),tooLarge);
+    float alpha=mix((pulse+halo)*dash+core,mix(.8,.35,tooLarge),vCore)*vSignal.z*opacity;
     if(alpha<.006) discard;
-    vec3 color=mix(vec3(.86,.84,.59),vec3(1.,.4,.2),vSignal.y);
+    vec3 color=vSignal.y<.25?vec3(.86,.84,.59):vSignal.y<.75?vec3(.37,.64,.72):vec3(1.,.4,.2);
     gl_FragColor=vec4(color,alpha);
     #include <colorspace_fragment>
   }`;
@@ -182,19 +358,51 @@ const windFragment = `
   varying float vAlpha; void main(){gl_FragColor=vec4(.94,.8,.6,vAlpha);
     #include <colorspace_fragment>
   }`;
+const markerVertex = `
+  uniform float underground; attribute vec3 warning; varying vec2 vUv; varying vec3 vWarning;
+  void main(){
+    vUv=uv;vWarning=warning;
+    vec3 p=(instanceMatrix*vec4(position,1.)).xyz;
+    p.y=sin(p.x*.026+p.z*.016)*4.8+sin(p.z*.048-p.x*.017)*2.7+sin(p.x*.065+p.z*.037)*1.1+sin(p.x*.012-p.z*.009)*4.+.13-underground*7.;
+    gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
+  }`;
+const markerFragment = `
+  uniform float time; varying vec2 vUv; varying vec3 vWarning;
+  void main(){
+    vec2 p=(vUv-.5)*2.; float r=length(p), aa=max(fwidth(r),.004), progress=vWarning.x;
+    if(r>1.) discard;
+    float angle=atan(p.y,p.x);
+    float ticks=smoothstep(.2,.3,sin(angle*16.));
+    float boundary=(1.-smoothstep(.014,.014+aa,abs(r-.94)))*(.42+ticks*.4);
+    float closing=(1.-smoothstep(.012,.012+aa,abs(r-(.9-progress*.73))))*.85;
+    float inner=(1.-smoothstep(.01,.01+aa,abs(r-.14)))*.55;
+    float cross=(1.-smoothstep(.018,.018+aa,min(abs(p.x),abs(p.y))))*(1.-smoothstep(.08,.23,r));
+    float urgent=.65+sin(time*(progress>.75?24.:8.))*.35;
+    float fill=(1.-smoothstep(.87,.94,r))*(.025+progress*.065);
+    float alpha=(boundary+closing+inner+cross*.7)*(.7+progress*.3)+fill*urgent;
+    vec3 color=mix(vec3(1.,.27,.1),vec3(.45,.8,.83),vWarning.y);
+    gl_FragColor=vec4(color,alpha*vWarning.z);
+    #include <colorspace_fragment>
+  }`;
 export class World {
   terrain: THREE.Mesh;
   sandMaterial: THREE.ShaderMaterial;
   props = new THREE.Group(); scenery = new THREE.Group(); sense = new THREE.Group();
   models: THREE.Group[] = []; echoes: THREE.Group[] = [];
   flags: THREE.Mesh[] = []; winds: THREE.Line[] = []; balloons: THREE.Group[] = [];
-  private preyBatches: { mesh: THREE.InstancedMesh; indices: number[] }[] = [];
+  private preyBatches: ({ mesh: THREE.InstancedMesh; indices: number[] } & AnimatedPart)[] = [];
   private hidden = new THREE.Matrix4().makeScale(0, 0, 0);
+  private articulation = new THREE.Object3D(); private partMatrix = new THREE.Matrix4();
   private echoBatch: THREE.InstancedMesh;
   private echoSignals: THREE.InstancedBufferAttribute;
   private echoMaterial: THREE.ShaderMaterial;
   private windMaterial = new THREE.ShaderMaterial({ vertexShader: windVertex, fragmentShader: windFragment,
     uniforms: { time: { value: 0 } }, transparent: true, depthWrite: false });
+  private markerMaterial = new THREE.ShaderMaterial({ vertexShader: markerVertex, fragmentShader: markerFragment,
+    uniforms: { time: { value: 0 }, underground: { value: 0 } }, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  private markerBatch: THREE.InstancedMesh; private markerWarnings: THREE.InstancedBufferAttribute;
+  private seenMarkers = new Set<number>(); private shotAge = -10;
+  private previousAge = 0;
   underground = 0; skyMaterial: THREE.ShaderMaterial;
   trails = Array.from({ length: 12 }, () => new THREE.Vector3());
   constructor(scene: THREE.Scene, sim: Simulation) {
@@ -214,7 +422,7 @@ export class World {
     }
     geometry.computeVertexNormals();
     this.sandMaterial = new THREE.ShaderMaterial({ vertexShader: terrainVertex, fragmentShader: terrainFragment,
-      uniforms: { trail: { value: this.trails }, time: { value: 0 }, underground: { value: 0 } }, side: THREE.DoubleSide });
+      uniforms: { trail: { value: this.trails }, time: { value: 0 }, underground: { value: 0 }, wormScale: { value: 1 } }, side: THREE.DoubleSide });
     this.terrain = new THREE.Mesh(geometry, this.sandMaterial); scene.add(this.terrain);
     const hemi = new THREE.HemisphereLight(0xffe2b1, 0x7a6867, 2.6); scene.add(hemi);
     const sun = new THREE.DirectionalLight(0xffd5a0, 3.6); sun.position.set(-90, 120, -80);
@@ -225,7 +433,7 @@ export class World {
     const fill = new THREE.DirectionalLight(0x86c5ce, 1.2); fill.position.set(20, 30, 80); scene.add(fill);
     scene.userData.sun = sun;
     this.makeLandscape();
-    const kinds: PreyKind[] = ['rabbit', 'chicken', 'crate', 'urn', 'jeep'];
+    const kinds: PreyKind[] = ['rabbit', 'chicken', 'crate', 'urn', 'jeep', 'goat', 'militia', 'pickup', 'helicopter', 'balloon'];
     const templates = new Map(kinds.map(k => [k, preyModel(k)]));
     const echoPlane = new THREE.PlaneGeometry(2, 2); echoPlane.rotateX(-Math.PI / 2);
     const echoSeed = new THREE.SphereGeometry(.13, 6, 4); echoSeed.scale(1, 2, 1); echoSeed.translate(0, .22, 0);
@@ -246,13 +454,19 @@ export class World {
     }
     for (const kind of kinds) {
       const indices = sim.prey.filter(p => p.kind === kind).map(p => p.id);
+      if (!indices.length) continue;
       for (const part of templates.get(kind)!.children as THREE.Mesh[]) {
         const batch = new THREE.InstancedMesh(part.geometry, part.material, indices.length);
-        batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage); batch.frustumCulled = false; batch.castShadow = true; batch.receiveShadow = true;
-        this.props.add(batch); this.preyBatches.push({ mesh: batch, indices });
+        batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage); batch.frustumCulled = false; batch.castShadow = !(part.material as THREE.Material).transparent; batch.receiveShadow = true;
+        this.props.add(batch); this.preyBatches.push({ mesh: batch, indices, ...part.userData as AnimatedPart });
       }
     }
-    scene.add(this.props, this.scenery, this.sense);
+    const markerGeometry = new THREE.PlaneGeometry(2, 2, 16, 16); markerGeometry.rotateX(-Math.PI / 2);
+    this.markerWarnings = new THREE.InstancedBufferAttribute(new Float32Array(12 * 3), 3); this.markerWarnings.setUsage(THREE.DynamicDrawUsage);
+    markerGeometry.setAttribute('warning', this.markerWarnings);
+    this.markerBatch = new THREE.InstancedMesh(markerGeometry, this.markerMaterial, 12); this.markerBatch.frustumCulled = false;
+    this.markerBatch.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.markerBatch.visible = false;
+    scene.add(this.props, this.scenery, this.sense, this.markerBatch);
   }
   private makeLandscape() {
     const rng = random(54);
@@ -311,9 +525,12 @@ export class World {
     const wind = new THREE.LineSegments(windGeometry, this.windMaterial); wind.frustumCulled = false; this.winds.push(wind); this.scenery.add(wind);
   }
   update(sim: Simulation, dt: number) {
+    if (sim.age < this.previousAge) { this.seenMarkers.clear(); this.shotAge = -10; }
+    this.previousAge = sim.age;
     this.underground = damp(this.underground, sim.deep ? 1 : 0, sim.deep ? 4 : 8, dt);
     this.skyMaterial.uniforms.underground.value = this.underground;
     this.sandMaterial.uniforms.time.value = sim.age; this.sandMaterial.uniforms.underground.value = this.underground;
+    this.sandMaterial.uniforms.wormScale.value = sim.mode === 'hunt' ? sim.hunt.scale : 1;
     this.echoMaterial.uniforms.time.value = sim.age; this.echoMaterial.uniforms.opacity.value = this.underground * .85;
     this.windMaterial.uniforms.time.value = sim.age;
     for (let i = 0; i < 12; i++) {
@@ -326,11 +543,23 @@ export class World {
     sim.prey.forEach((p, i) => {
       const model = this.models[i]; model.visible = p.alive;
       if (p.alive) {
-        model.position.set(p.x, p.y, p.z); model.rotation.set(p.flipped ? Math.PI : p.airborne ? sim.age * p.spin : 0, p.yaw, 0);
+        model.position.set(p.x, p.y, p.z); model.rotation.set(p.flipped ? Math.PI : p.airborne && p.kind !== 'helicopter' && p.kind !== 'balloon' ? sim.age * p.spin : 0, p.yaw, 0);
+        model.scale.setScalar(1);
         if (p.flipped) model.position.y += 2.4;
         if (p.kind === 'rabbit' || p.kind === 'chicken') {
           const near = Math.hypot(p.x - sim.x, p.z - sim.z) < 17 && sim.depth < 3;
           model.rotation.x += Math.sin(sim.age * (near ? 14 : 6) + p.seed) * (near ? .22 : .035);
+        } else if (p.kind === 'goat' || p.kind === 'militia') {
+          const scared = Math.hypot(p.x - sim.x, p.z - sim.z) < 35 && sim.depth < 4;
+          model.position.y += Math.abs(Math.sin(sim.age * (scared ? 11 : 6) + p.seed)) * (scared ? .17 : .035);
+          model.rotation.x += scared ? -.12 : .025;
+        } else if (p.kind === 'pickup') {
+          model.position.y += Math.sin(sim.age * 11 + p.seed) * .045;
+          if (!p.flipped && !p.airborne) model.rotation.z = Math.sin(sim.age * 2.8 + p.seed) * .035;
+        } else if (p.kind === 'helicopter') {
+          model.rotation.set(-.08 + Math.sin(sim.age * .9) * .045 + Math.exp(-Math.max(0, sim.age - this.shotAge) * 15) * .07, p.yaw, Math.sin(sim.age * 1.1) * .09);
+        } else if (p.kind === 'balloon') {
+          model.rotation.set(Math.sin(sim.age * .7) * .018, p.yaw, Math.sin(sim.age * .55) * .025);
         }
       }
       model.updateMatrix();
@@ -339,11 +568,38 @@ export class World {
       e.position.set(p.x, ground(p.x, p.z) - 5.3, p.z);
       e.scale.setScalar(p.radius * 1.4 + 1.5); e.updateMatrix();
       this.echoBatch.setMatrixAt(i, e.visible ? e.matrix : this.hidden);
+      const dangerous = p.kind === 'militia' || p.kind === 'pickup' || p.kind === 'helicopter';
+      this.echoSignals.setY(i, sim.canEat(p) ? 0 : dangerous ? 1 : .5);
       this.echoSignals.setZ(i, Math.sqrt(Math.max(0, 1 - distance / range)) * (p.kind === 'rabbit' || p.kind === 'chicken' || p.airborne ? 1 : .8));
     });
     this.echoBatch.instanceMatrix.needsUpdate = true; this.echoSignals.needsUpdate = true;
+    this.markerBatch.visible = sim.mode === 'hunt' && sim.markers.length > 0;
+    this.markerMaterial.uniforms.time.value = sim.age; this.markerMaterial.uniforms.underground.value = this.underground;
+    for (let i = 0; i < 12; i++) {
+      const marker = sim.markers[i];
+      if (marker) {
+        if (!this.seenMarkers.has(marker.id)) {
+          this.seenMarkers.add(marker.id); if (marker.kind === 'shell') this.shotAge = sim.age;
+        }
+        this.articulation.position.set(marker.x, 0, marker.z); this.articulation.rotation.set(0, 0, 0); this.articulation.scale.set(marker.radius, 1, marker.radius); this.articulation.updateMatrix();
+        this.markerBatch.setMatrixAt(i, this.articulation.matrix);
+        this.markerWarnings.setXYZ(i, 1 - marker.time / marker.duration, marker.kind === 'seismic' ? 1 : 0, 1);
+      } else {
+        this.markerBatch.setMatrixAt(i, this.hidden); this.markerWarnings.setXYZ(i, 0, 0, 0);
+      }
+    }
+    for (const id of this.seenMarkers) if (!sim.markers.some(marker => marker.id === id)) this.seenMarkers.delete(id);
+    this.markerBatch.instanceMatrix.needsUpdate = true; this.markerWarnings.needsUpdate = true;
     for (const batch of this.preyBatches) {
-      batch.indices.forEach((index, slot) => batch.mesh.setMatrixAt(slot, sim.prey[index].alive ? this.models[index].matrix : this.hidden));
+      batch.indices.forEach((index, slot) => {
+        const p = sim.prey[index];
+        if (!p.alive) { batch.mesh.setMatrixAt(slot, this.hidden); return; }
+        if (batch.motion) {
+          this.posePart(batch, p, sim);
+          this.partMatrix.multiplyMatrices(this.models[index].matrix, this.articulation.matrix);
+          batch.mesh.setMatrixAt(slot, this.partMatrix);
+        } else batch.mesh.setMatrixAt(slot, this.models[index].matrix);
+      });
       batch.mesh.instanceMatrix.needsUpdate = true;
     }
     this.flags.forEach((flag, i) => {
@@ -352,5 +608,27 @@ export class World {
       attr.needsUpdate = true;
     });
     this.balloons.forEach((b, i) => { b.position.y = 50 + i * 13 + Math.sin(sim.age * .45 + i) * 1.5; b.rotation.z = Math.sin(sim.age * .3 + i) * .04; });
+  }
+  private posePart(part: AnimatedPart, prey: Prey, sim: Simulation) {
+    const pivot = part.pivot!, phase = part.phase ?? 0;
+    const scared = Math.hypot(prey.x - sim.x, prey.z - sim.z) < 35 && sim.depth < 4;
+    const stride = Math.sin(sim.age * (scared ? 11 : 6) + prey.seed) * phase;
+    this.articulation.position.set(...pivot); this.articulation.rotation.set(0, 0, 0); this.articulation.scale.setScalar(1);
+    switch (part.motion) {
+      case 'goatLeg': this.articulation.rotation.x = stride * (scared ? .8 : .3); break;
+      case 'personLeg': this.articulation.rotation.x = stride * (scared ? .8 : .42); break;
+      case 'personArm':
+        this.articulation.rotation.set(stride * .4, 0, phase * (scared ? 1.5 : .22) + stride * .35); break;
+      case 'turret': case 'barrel': {
+        this.articulation.rotation.y = Math.atan2(sim.x - prey.x, prey.z - sim.z) - prey.yaw;
+        if (part.motion === 'barrel') this.articulation.translateZ(Math.exp(-Math.max(0, sim.age - this.shotAge) * 15) * .3);
+        break;
+      }
+      case 'rotor': this.articulation.rotation.y = sim.age * 37; break;
+      case 'tailRotor': this.articulation.rotation.x = sim.age * 53; break;
+      case 'pennant': this.articulation.rotation.set(Math.sin(sim.age * 4) * .17, Math.sin(sim.age * 5) * .35, Math.sin(sim.age * 3) * .15); break;
+      case 'flame': this.articulation.scale.set(.8, .65 + Math.sin(sim.age * 17) * .15, .8); break;
+    }
+    this.articulation.updateMatrix();
   }
 }
