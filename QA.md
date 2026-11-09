@@ -1,5 +1,7 @@
 # Burrow QA
 
+Current scope: rungs 1 and 2 are implemented and verified in the browser; rung 3 is partially complete through Oasis/Hunt 2. Hunts 3–5 and rung 4 are absent. MacBook Air M5 performance remains unverified.
+
 The browser scripts drive real keyboard, mouse and menu controls. The development inspection hook is used only to read telemetry; the scripts never alter game state. Production smoke uses visible DOM state and asserts the development hook is absent.
 
 ## Reproduce
@@ -76,3 +78,35 @@ Free-roam production smoke also passed against the same artifact: title → guid
 These are fast scripted routes, not evidence that a typical hunt lasts 3–5 minutes or that the full combat economy remains balanced over repeated human play. They do not establish later hunts, campaign persistence, or 60 fps on target hardware. Final Hunt screenshots use Chrome 156.0.8078.47, SwiftShader, 800×500, low quality. Frame intervals include shared cloud CPU contention and automation; no target-performance claim is made.
 
 A final video-enabled real-input win also passed against the final source: 38.25 simulation seconds, 34,897 points, health 94 and heat 100. The 38-second route included a landed enemy hit and the balloon catch. Its 71.2-second software-rendered recording was condensed to 45 seconds in `artifacts/hunt-final-review/review.mp4`, with a 12-frame contact sheet reviewed by the parent agent for growth readability, target direction, warnings and physical cloth aftermath. Raw run/report are under `artifacts/hunt-final-video/`. Vite's development watcher ignores artifacts/ so future isolated QA builds will not interrupt an ongoing input run.
+
+## Oasis / Hunt 2 validation
+
+The new scripts preserve the Hunt 1 and toy harnesses. `oasis-playtest.mjs` starts with a fresh isolated browser profile by default, earns the Hunt 1 win through keyboard/mouse input, and continues through the expedition UI. Standalone Oasis checks require `BURROW_PROFILE` pointing to the campaign JSON earned by that run. Those restored-profile checks initialize only between-hunt local storage; no script changes live simulation state, teleports, or calls simulation steps.
+
+```sh
+BURROW_URL=http://127.0.0.1:5174 BURROW_AUDIT_DIR=artifacts/oasis-continuity BURROW_RECORD_VIDEO=1 node scripts/oasis-playtest.mjs
+BURROW_URL=http://127.0.0.1:5174 BURROW_AUDIT_DIR=artifacts/oasis-win BURROW_PROFILE=artifacts/oasis-continuity/earned-campaign.json BURROW_OASIS_SCENARIO=win BURROW_RECORD_VIDEO=1 node scripts/oasis-playtest.mjs
+BURROW_URL=http://127.0.0.1:5174 BURROW_AUDIT_DIR=artifacts/oasis-water BURROW_PROFILE=artifacts/oasis-continuity/earned-campaign.json BURROW_OASIS_SCENARIO=water node scripts/oasis-playtest.mjs
+BURROW_URL=http://127.0.0.1:5174 BURROW_AUDIT_DIR=artifacts/oasis-loss BURROW_PROFILE=artifacts/oasis-continuity/earned-campaign.json BURROW_OASIS_SCENARIO=loss node scripts/oasis-playtest.mjs
+```
+
+The recorded continuity run legitimately won Hunt 1 at 41.45 simulation seconds for 13,935 points/gold, saved its 1.5 exit size, and unlocked Oasis. Report Continue → Oasis expedition card → Begin worked. Reload → title saved Continue → Oasis card → Begin restored Hunt 2 at the carried 1.5 size. The earned save is `artifacts/oasis-continuity/earned-campaign.json`. That run's later Oasis apex attempt failed because the first bot's waiting circle drifted off the runway, and threats killed it. Its overall report therefore correctly says failed; the unlock/reload transitions remain valid evidence. The bot's staging controls were corrected without changing the engine.
+
+The subsequent Oasis win restored that earned save and passed entirely through real input: stage II at 6.97 seconds, stage III at 11.52 seconds, and an airborne head-on cargo-plane catch at 49.46 seconds. It ate 16 meals, scored 18,180/gold, and ended with health 75.73, hunger pressure, heat 99.06, and size 2.65. Townspeople and market carts supplied growth, food was observed digesting, and heat rose. The missed first takeoff returned continuously for the successful low runway pass. Victory saved the Oasis record; Hunt Again restored the carried entry size 1.5, stage I, health and zero bites. Pause/withdraw/title also passed. No console errors or failed requests were recorded. Evidence: `artifacts/oasis-win/report.json`, `oasis-win-report.png`, and `completed-campaign.json`.
+
+The water check passed a real dry causeway crossing at 4.69 seconds, a surface canal crossing at 9.23 seconds with held dive input and depth/launch charge both zero, then a dry-bank deep launch crossing above water at 18.37 seconds. The airborne sample was 25.04 m above the water surface with the wet restriction inactive. Screenshots show the surface-only/water-drag explanation and the airborne route. Its deliberate withdrawal report and carried-size retry passed. Evidence is under `artifacts/oasis-water/`; no console errors or failed requests occurred.
+
+The defeat check showed a seismic warning at 9.49 seconds while health remained 100, then first damage at 11.29 seconds to health 84. Deep camping produced loss at 49.69 seconds with hunger 67.66, establishing threat damage rather than starvation. Warning, damage and loss screenshots are in `artifacts/oasis-loss/`; report/retry/title and clean console/network checks passed.
+
+The 113.72-second successful Oasis recording is `artifacts/oasis-win/page@f97195ce613ce224b75f810fee38ccbf.webm`. Its condensed MP4 and twelve-frame contact sheet are in `artifacts/oasis-win-review/`. The parent reviewed the plane catch/destruction, camera, HUD and result; water and noon-town screenshots were also inspected. The bright noon town, turquoise channels, palms and cream buildings are visually distinct from Hunt 1. A palm briefly crosses the camera during one growth moment; surrounding frames are clear. These short routes establish mechanics and flow, not 3–5 minute human pacing or a long balance study. Chrome 156/SwiftShader, low quality, 800×500 capture remains a cloud correctness/presentation check; MacBook Air M5 60 fps is still unverified.
+
+Final isolated production was built with `npm run build -- --outDir artifacts/oasis-final-dist`, producing JavaScript `index-BWeRtmsB.js` and CSS `index-_9OTo8GP.css`. Strict TypeScript and Vite passed; Vite's bundle-size warning (694 kB JavaScript, 191 kB gzip) is nonblocking. Serve and repeat only the three production flows with:
+
+```sh
+npx vite preview --outDir artifacts/oasis-final-dist --port 5176
+BURROW_URL=http://127.0.0.1:5176 BURROW_AUDIT_DIR=artifacts/oasis-final-production BURROW_PROFILE=artifacts/oasis-continuity/earned-campaign.json node scripts/oasis-production-smoke.mjs
+BURROW_URL=http://127.0.0.1:5176 BURROW_AUDIT_DIR=artifacts/hunt1-oasis-final-production node scripts/hunt-production-smoke.mjs
+BURROW_URL=http://127.0.0.1:5176 BURROW_AUDIT_DIR=artifacts/toy-oasis-final-production node scripts/production-smoke.mjs
+```
+
+All three final production flows passed at 1280×800, low quality, Chrome 156.0.8078.47/SwiftShader. Restored Oasis and fresh Hunt 1 each passed expedition → first bite → valid accessible survival/growth/heat meters → pause/settings/resume → withdrawal report → clean retry → title. Toy passed title → guide/settings → first bite → pause/resume → outing report → reset → title. Every flow asserted that the development hook was absent, and final reports record zero console errors and zero failed requests. The Oasis harness waits for the first HUD update before asserting its cargo objective; an earlier immediate assertion raced that update, without an engine fault. Screenshots of the noon opening and water/air routes were inspected for readability. Reports and images are in the corresponding directories above. Owned QA development/preview servers were stopped after validation.

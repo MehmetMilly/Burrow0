@@ -126,3 +126,16 @@ The second hunt moves to a chalk-white oasis town under a high noon sun: turquoi
 - World switches scenery, terrain, water, lighting and backdrop by active hunt index; dynamic target pools stay stable. The new plane target replaces the balloon cue in Hunt 2. Hero/effects/audio support larger size, water and cargo destruction without regressing the toy.
 
 Acceptance: actual-input Hunt 1→Hunt 2 continuity and save/reload; visible water surface restriction and a dry/air crossing; legitimate Hunt 2 food/growth/heat and cargo-plane win; readable warnings/loss/retry/results; production flow for both hunts and the toy. Review screenshots/video and record performance honestly. Finish Oasis to the first hunt's bar before starting Red Canyon.
+
+## Hunt 2 comparison milestone
+
+The user requested a clean stop at the annotated `milestone-hunt2` tag. The implemented scope is the toy, First Light and High Water; do not begin Red Canyon or add features as part of this wrap-up.
+
+- Rung 1: toy implementation and real-input/production flow verified.
+- Rung 2: Hunt 1 implementation, legitimate victory/defeat, growth/apex and production flow verified.
+- Rung 3: partially complete through Hunt 2; Hunts 3–5 are absent. Hunt 2's implemented contract above includes carried growth, a saved two-stop expedition, water routes, populated town, sonar pressure and an airborne-only cargo catch with repeatable go-arounds.
+- Rung 4: not started. Target MacBook Air M5 performance remains unverified for all rungs; cloud correctness/visual evidence does not fulfill that hardware condition.
+
+Actual input verified an earned Hunt 1 unlock and reload into Oasis, then a separate earned-profile Oasis win at 49.46 simulation seconds with 16 bites/18,180 points. Surface water restriction, dry causeway and airborne crossing also passed. The initial combined recording's bot drifted off its runway staging line and lost; it is retained as partial continuity evidence rather than described as a full campaign win. Deep-camping defeat passed with a seismic warning before damage and hunger still healthy at loss. Final isolated production flows passed for Oasis, Hunt 1 and the toy, including reports and clean retries, with no development hook, console errors or failed requests. All 24 tests and the strict production build pass. QA.md records exact evidence.
+
+The shipped growth route is deliberately ungated by a timer. Fast bots finish substantially sooner than the brief's estimated human pacing; no hour-long campaign or human balance study is claimed. Foreground town foliage/buildings can briefly obscure the hero, and a small sand/camera transition seam remains. These are known polish limits, recorded without expanding this comparison milestone. No Hunt 2 acceptance check remains pending in this scope. NOTES.md and QA.md are the handoff record; the target-hardware and human-balance limits above remain open.

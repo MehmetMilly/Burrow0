@@ -1,60 +1,49 @@
-# Burrow — current handoff
+# Burrow — Hunt 2 milestone
 
-## State
+## Scope and stopping point
 
-**Highest playable scope: rung 2 / First Light (Hunt 1), plus the complete toy.** The hunt has passed legitimate real-input win and loss, both growth events, the balloon catch, results/retry/title, and isolated production checks for both modes. Hunts 2–5 are not implemented. Do not claim full campaign completion or certified M5 performance.
+The user requested a fixed comparison baseline at **`milestone-hunt2`**: finish Oasis verification, commit/push main, create an annotated tag, then stop. Do not start Hunt 3, add features, retry hosting, or continue polishing after that handoff without a new request.
 
-Read BRIEF.md for the vision and DESIGN.md for decisions/contracts. DESIGN.md was written and committed before code. The user authorizes autonomous work, regular commits, Vercel deployment with the logged-in account, and up to 5 subagents (Sol 6.1 high/xhigh for critical work).
+**Playable scope: the complete toy, First Light / Hunt 1, and High Water / Hunt 2.** Rung 1 and rung 2 are implemented and browser-verified. Rung 3 is partially complete: Oasis is the first of four additional hunts; Hunts 3–5 are not built. Rung 4 has not started. The brief's target-hardware 60fps requirement remains unverified, so this is not a claim that every brief acceptance condition is met.
 
-## Current game
+Read BRIEF.md for the fixed vision, DESIGN.md for decisions and QA.md for reproducible evidence. DESIGN.md predates implementation. Source implementation milestones are d3ca084 (Oasis design) and ccfa627 (Oasis implementation); the final milestone tag includes the verification scripts and accurate records.
 
-- Title → First Light expedition map/card → Hunt 1 → win/loss report → retry/title. The original free-roam toy remains under ENTER THE DUNES.
-- Camera-led movement, surge/lurk, depth×speed breach, air lunge, committed slam, swept eating and soft basin boundary. Holding a slam cannot charge a second breach; pausing cancels stored dive intent. Body path retains distance during slow travel.
-- Three growth stages (.7/1.05/1.5 scale), delayed food digestion and visible traveling bulges, separate health/hunger, food-based healing and starvation, heat/hiding, banked chains, scored/time-based medals.
-- Rabbits/chickens, angry goats, militia patrols, armed pickups, attack helicopter, armored flip-to-eat jeeps, breakable camp props, striped lead balloon. All 121 entity IDs are stable across modes; unused hunt species stay inactive in toy.
-- Shells and anti-camping seismic strikes show terrain-conforming telegraphs and audio warnings. Constant W now crosses the predicted blast; a course change or dive avoids it. Deep local circling is punished, mobile quiet travel lowers heat.
-- Balloon is visible from the opening and edible only at stage III. A real run-up/dive and a generous air catch ends the hunt. An in-world direction/range cue helps locate it.
-- Continuous plated hero, articulated flower maw/teeth, stage-specific fins/crown, animated enemies/rotors/flags, sculpted dunes, sandstone arch/mesas, shallow wake/silhouette, deep tremor signals.
-- Pooled physical sand/debris, dust, scars, impact rings, tracer lines, flat fluttering balloon fabric scraps. Instanced hero/prey/camps/particles/wind/echoes keep draw calls bounded.
-- Original adaptive pressure/music cues with CC0 recorded wind/crunch/stone layers (public/audio/CREDITS.md). Local fonts/assets; no third-party runtime services.
-- Game UI: persistent settings, keyboard focus, compact desktop support, separate survival/heat/growth instruments, live chain points, contextual damage causes, growth callouts, hunt-specific reports. No debug UI in production.
+## What exists
 
-## Verification
+- Title → two-stop expedition map/card → hunt → victory/defeat report → retry/title. Hunt 1 victory unlocks Oasis and offers Continue. Saved Continue survives reload. The complete pressure-free toy remains under Enter the Dunes.
+- Versioned between-hunt local save: unlocked/selected hunts, completed hunts, best scores/times/medals and carried growth. No mid-hunt resume. Hunt 2 starts at Hunt 1's adult scale 1.5 and grows through 2.05/2.65. Retry always restores its carried entry size, never the previous attempt's final size. Corrupt/unavailable storage has a safe fallback.
+- Camera-led movement, surge/lurk, depth×speed breach, air correction/lunge, committed slam and swept automatic eating. Deep tremor view, bounded basin, separate health/hunger, delayed digestion with visible bulges, heat/hiding, telegraphed shells/seismic pressure, scored chains and medals.
+- First Light: dawn dunes, rabbits/chickens/goats, patrols/pickups/helicopter, flip-to-eat armor, breakable camps and the balloon rally apex.
+- High Water: a distinct noon oasis town with chalk houses, teal awnings, palms, turquoise canals, dry causeways and an eastern runway. Human-scale food, market carts, slammable houses, sonar drones and a cargo-plane apex. Stable entity pools total 185 across modes; unused species remain inactive.
+- Water forces surface travel/drag, prevents dive charging and raises exposure; dry sand restores burrowing. Airborne crossings preserve the arc. The plane spools/takes off at apex size and makes a continuous go-around after a miss. Both plane and worm must be airborne for the catch; a parked/ground pass cannot win.
+- Continuous plated hero, flower maw/teeth, inherited adult armor plus two Oasis growth additions, instanced scenery/prey/effects, physical debris, water droplets/rings and aircraft fragments. No sand scars on water. Hunt-specific palette, camera, lessons, reports and audio, with recorded CC0 foley credits bundled.
+- Settings, focus/keyboard navigation, compact desktop layout and a development-only read-only telemetry hook. Production contains no inspection hook or debug UI. All gameplay assets are local; no backend/account is needed to play.
 
-- **14 mechanics tests pass**, plus strict production build. Tests cover launch/run-up,10 repeated cycles, slam latch/lunge commitment, paused dive intent, destruction/reset, stable pools, delayed digestion, health/hunger separation, size/apex gate, victory score banking, seismic camping pressure, and shell dodge response.
-- Toy production flow and bounded-resource audit passed previously (QA.md).
-- First Hunt 1 win: stages at 15.55 s / 26.54 s; balloon at 33.60 s;22 bites / 14,058 score. This is an efficient scripted route, not evidence of 3–5 minute human pacing. Root reviewed screenshots and fixed overlapping growth/bite text and balloon debris.
-- Final post-combat-fix win passed at 34.78 s with 22 bites / 32,696 points / gold (artifacts/hunt-final-win). Final seismic loss occurred at 49.69 s with hunger 67.66, proving threat damage rather than starvation (artifacts/hunt-final-loss). Both results/retry/title paths passed.
-- A focused warning capture verifies a distinct orange seismic field, visible countdown/response before any damage, and no deep-label/objective overlap (artifacts/hunt-final-warning).
-- Isolated final production Hunt and toy flows both passed at 1280×800 with no dev hook, console errors or failed requests. Build artifact artifacts/hunt-qa-dist has JS index-D2uElL3S.js / CSS index-CXKUOIuU.css. See QA.md for exact evidence.
-- Repro scripts: scripts/hunt-playtest.mjs (BURROW_HUNT_SCENARIO=win|loss), hunt-production-smoke.mjs, existing toy playtest/quality-audit/production-smoke.
-- Dev snapshot is read-only tooling on Vite dev only, exposed as window.__BURROW__.snapshot(). Production excludes it. Bots use real keyboard/mouse input, never teleport or alter game state.
-- Ignored artifacts/ holds screenshots, reports and optional video. npm run playtest defaults to no recording; BURROW_RECORD_VIDEO=1 enables it (npx playwright install ffmpeg).
+## Verification at the milestone
 
-## Known limits / next actions
+- `npm test`: **24/24 passed** (22 simulation, 2 campaign). `npm run build`: strict TypeScript and production Vite build passed. Final assets: JS `index-BWeRtmsB.js`, CSS `index-_9OTo8GP.css`.
+- Real-input Hunt 1 win in this integrated build: 41.45 simulation seconds, 13,935 points/gold. Unlock, carried growth, Continue into Oasis and reload → saved Continue → Oasis passed. Evidence: `artifacts/oasis-continuity/earned-campaign.json` and screenshots/report. That first combined run later lost after the bot drifted off its aircraft staging line; it is not claimed as a combined campaign win.
+- Separate Hunt 2 win restored only that legitimately earned between-hunt profile. Both growth stages at 6.97/11.52 seconds; aircraft caught at 49.46 seconds, 16 bites, 18,180 points/gold, health 75.73. Food/digestion/hunger/heat, victory persistence, carried-size retry and return to title passed; no console errors or failed requests. `artifacts/oasis-win/` contains raw evidence; parent reviewed its result and 12-frame contact sheet in `artifacts/oasis-win-review/` (45-second MP4 also available).
+- Real-input water route passed: dry causeway 4.69s; wet canal 9.23s with depth 0/charge 0 despite held dive; dry-bank diving restored and airborne canal crossing 18.37s. Parent reviewed surface restriction and airborne screenshots. Evidence: `artifacts/oasis-water/`.
+- Real-input defeat passed: seismic warning at 9.49s with health 100, first damage at 11.29s to 84, loss at 49.69s with hunger 67.66. Warning preceded threat damage; loss report, carried-size retry and title passed with no console/network errors. Parent reviewed the warning screenshot. Evidence: `artifacts/oasis-loss/`.
+- Final isolated production checks passed for Oasis, Hunt 1 and the toy at 1280×800/low: first bite, HUD, pause/settings/guide as applicable, report, clean retry and title. No production inspection hook, console errors or failed requests. Reports: `artifacts/oasis-final-production/`, `artifacts/hunt1-oasis-final-production/`, `artifacts/toy-oasis-final-production/`. The isolated artifact matches the final asset hashes above. No Hunt 2 acceptance checks remain pending.
+- Earlier toy/Hunt 1 acceptance and repeated movement/resource checks remain recorded in QA.md. Browser scripts use real keyboard/mouse input; telemetry is read only, never teleporting or mutating simulation state. Restored profiles are explicitly disclosed.
 
-1. All current gameplay source is verified and committed. Final recorded real-input win passed at 38.25 s, 34,897 points, health 94, heat 100. Root reviewed the condensed 45-second MP4 and 12-frame contact sheet under artifacts/hunt-final-review; growth, targeting, warnings, aerial catch and cloth aftermath are readable. Raw evidence is in artifacts/hunt-final-video. Temporary QA/dev servers were stopped at handoff.
-2. Vite now ignores artifacts/ in its dev watcher so isolated QA builds cannot reload a live input run; this was an observed harness interruption earlier.
-3. Target MacBook Air M5 60fps remains **unverified**. Cloud has no /dev/dri and uses SwiftShader. Software/capture frame intervals do not establish target GPU performance. Run the README profiling procedure on the target machine.
-4. Human 3–5 minute pacing is an estimate. Efficient real-input bots finish in ~35 simulation seconds. Further human play should judge combat pressure, routing and medal balance; do not misrepresent those bots as a long balance study.
-5. A brief camera/sand crossing seam remains optional polish; independent review judged it readable and not disorienting.
-6. Next ladder rung: Oasis/Hunt 2 with water/heat routes and cargo-plane apex. Persistent campaign growth/save, later biomes and later apex set pieces are not implemented. Bring each hunt to the current presentation/flow bar before starting another.
-7. No need to retry the Vercel account block to continue game work; user explicitly prioritized progress over hosting.
+## Known limits
 
-## Hosting — move on unless account access is fixed
+1. **MacBook Air M5 60fps is unverified.** This Linux cloud has no `/dev/dri`; Chrome uses SwiftShader. Software frame intervals, screenshots and recording do not establish target GPU performance. The production route still needs direct target-machine profiling (README).
+2. Human hunt pacing and long-term balance are unverified. Efficient bots reach growth quickly and win in roughly 35–50 simulation seconds; they are acceptance routes, not proof of the brief's 3–10 minute human pacing or an hour-long campaign.
+3. Brief foreground foliage/building occlusion is visible in some town routes, including a growth frame. Other reviewed town/runway/air views remain readable. A small sand/camera crossing seam also remains. These are known visual polish limits; no broad camera rework was added to this frozen milestone.
+4. No multi-hour soak or broad hardware/browser matrix was performed. Short bounded-resource checks and the documented production flows passed. Vite reports a nonblocking bundle-size warning (about 694 kB JS /191 kB gzip); assets are locally bundled.
+5. Hunts 3–5, campaign finish and stretch modes are absent. The expedition UI exposes only implemented hunts.
+6. Captures/videos/build artifacts live in ignored `artifacts/`, not in the Git tag; source, lockfile, test scripts and written evidence are versioned. The tag identifies the reproducible source baseline.
 
-User explicitly said not to stall on Vercel team access and to continue other game work. The first deployment is **blocked/not live** by TEAM_ACCESS_REQUIRED: Vercel cannot verify the existing Git commit author against the Hobby team. Build itself passed. CLI polling was stopped after confirming terminal BLOCKED. Source is on GitHub; missing source is not the issue. Do not strip metadata or impersonate another author.
+## Hosting
 
-Project burrow0, team mehmetmillys-projects, project ID prj_KU2FT0AWBYRZh7sMgxidnRqPuOwI. Blocked deployment dpl_5GtKLcUY23Q2Bbh37bYJq9hfbS4N. Link is locally ignored under .vercel/. vercel.json/.vercelignore are committed. Resume hosting only after a legitimate account/Git provider link fix; do not report the blocked URL as a playable game.
+No live deployment is claimed. Vercel's first deployment was terminal BLOCKED / `TEAM_ACCESS_REQUIRED`: existing Git commit author cannot be verified against the Hobby team, although the build passed. The user explicitly directed moving on. Do not strip metadata or impersonate an author.
 
-## Commands
+Project `burrow0`, team `mehmetmillys-projects`, project ID `prj_KU2FT0AWBYRZh7sMgxidnRqPuOwI`; blocked deployment `dpl_5GtKLcUY23Q2Bbh37bYJq9hfbS4N`. CLI link/env are ignored; Vercel config is committed. Only revisit after a legitimate account/Git-provider link fix and a new request.
 
-npm ci; npm run dev; npm test; npm run build; npm run preview. Automated Hunt tests can target port 5174 via BURROW_URL. Temporary preview servers should be stopped at handoff. README documents controls, scope and licenses.
+## Run and reproduce
 
-## Active continuation: Oasis / Hunt 2
-
-User explicitly requested continuing from90980f8 into Oasis using subagents. Hunt1/toy remain the accepted baseline. DESIGN.md now contains the Hunt2 integration contract; biomes.ts provides immutable shared terrain/water/runway/house data. Root integrates camera/main/campaign persistence; agents own simulation, world, UI, hero/effects/audio and QA. Do not stop at a handoff commit while required Oasis work remains; finish implementation, real-input crossing/plane win, production checks and documentation.
-
-## Oasis implementation milestone
-
-Oasis implementation is integrated and currently frozen for actual-input QA. Strict build and24tests pass (22simulation,2campaign). Includes carried adult growth1.5→2.05→2.65, two-stop unlocked map/continue, versioned between-hunt save, deterministic canals/causeways, forced surface/drag/no charging while wet, human/cart diet, slammable houses, sonar pressure and continuous cargo-plane takeoff/go-around. The plane cannot be swallowed parked or from a ground pass; both plane and worm must be airborne. World/hero/effects/audio/UI owners completed their bounded browser/visual checks. Parent reviewed Oasis overview/street/plane art. The recorded real-input continuity test is running at5174, followed by restored-profile water/loss and production checks. Highest fully accepted hunt remains1until that evidence passes.
+`npm ci`; `npm run dev`; `npm test`; `npm run build`; `npm run preview`. README explains controls and licenses; QA.md gives exact browser commands and evidence. Temporary test/dev/preview servers are stopped at handoff. The next development work, if explicitly requested later, begins after this tagged comparison baseline; do not begin it during this wrap-up.
