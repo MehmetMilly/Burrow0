@@ -378,9 +378,9 @@ const markerFragment = `
     float inner=(1.-smoothstep(.01,.01+aa,abs(r-.14)))*.55;
     float cross=(1.-smoothstep(.018,.018+aa,min(abs(p.x),abs(p.y))))*(1.-smoothstep(.08,.23,r));
     float urgent=.65+sin(time*(progress>.75?24.:8.))*.35;
-    float fill=(1.-smoothstep(.87,.94,r))*(.025+progress*.065);
+    float fill=(1.-smoothstep(.87,.94,r))*(.055+progress*.14);
     float alpha=(boundary+closing+inner+cross*.7)*(.7+progress*.3)+fill*urgent;
-    vec3 color=mix(vec3(1.,.27,.1),vec3(.45,.8,.83),vWarning.y);
+    vec3 color=mix(vec3(1.,.24,.08),vec3(1.,.46,.12),vWarning.y);
     gl_FragColor=vec4(color,alpha*vWarning.z);
     #include <colorspace_fragment>
   }`;

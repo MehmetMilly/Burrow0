@@ -174,7 +174,15 @@ export class UI {
     this.growthTimer -= dt; if (this.growthTimer <= 0) this.el('growth-callout').classList.remove('visible');
 
     this.damageHintTimer = Math.max(0, this.damageHintTimer - dt);
-    if (hunt.apexReady && sim.state === 'air') this.teach(104, 'THE SKY IS ON THE MENU.', 'Stay on the balloon. <kbd>LMB</kbd> corrects your bite in the air.', '04');
+    const warning = sim.markers.filter(marker => Math.hypot(marker.x - sim.x, marker.z - sim.z) < marker.radius + 15 &&
+      (marker.kind === 'seismic' ? sim.depth > 2 && sim.state !== 'air' : sim.depth < 2.8 && sim.y < ground(sim.x, sim.z) + 5))
+      .sort((a, b) => a.time - b.time)[0];
+    this.hud.classList.toggle('under-fire', !!warning);
+    if (warning) {
+      this.teach(warning.kind === 'seismic' ? 120 : 121, '', warning.kind === 'seismic' ? 'Release <kbd>SPACE</kbd> to surface. Break your circle.' : 'Change your line, dive, or breach clear of the marked sand.', '!');
+      this.el('lesson-title').textContent = `${warning.kind === 'seismic' ? 'SEISMIC SWEEP' : 'INCOMING SHELL'} · ${warning.time.toFixed(1)} S`;
+    }
+    else if (hunt.apexReady && sim.state === 'air') this.teach(104, 'THE SKY IS ON THE MENU.', 'Stay on the balloon. <kbd>LMB</kbd> corrects your bite in the air.', '04');
     else if (this.damageHintTimer > 0) this.teach(110, this.damageHint, this.damageHint.includes('GOAT') ? 'Eat rabbits and chickens first. Goats become food when you grow.' : this.damageHint.includes('SEISMIC') ? 'Break your circle or release to surface before the pulse lands.' : this.damageHint.includes('STARV') ? 'Find food. Well-fed worms recover health.' : 'Change course, dive, or breach clear of the marked sand.', '!');
     else if (hunt.hunger < 25) this.teach(105, 'TIME FOR A MEAL.', 'Food fills hunger. Stay well fed to recover health.', '!');
     else if (hunt.health < 30) this.teach(106, 'DON’T BECOME A FOSSIL.', 'Keep eating to heal. Go deep and keep moving to escape.', '!');
